@@ -2,6 +2,12 @@
 
 This folder is for Kaggle only. Use it to train, tune, and export checkpoints.
 
+For the full VisDrone + W&B notebook workflow, see:
+
+```text
+kaggle/VISDRONE_RUN_GUIDE.md
+```
+
 ## Train YOLOv8n-P2 on VisDrone
 
 ```bash
