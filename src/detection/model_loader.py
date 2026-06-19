@@ -102,7 +102,7 @@ def load_yolov8_p2(transfer: bool = True):
     if transfer:
         transfer_from = resolve_project_path(config["transfer_from"])
         if not transfer_from.exists():
-            transfer_from = ensure_pretrained_weight("yolov8s")
+            transfer_from = ensure_pretrained_weight(transfer_from.stem)
         model.load(str(transfer_from))
 
     return model
