@@ -43,7 +43,7 @@ def _resolve_training_model(config: dict[str, Any]) -> Path:
     if model_name in {"yolov8n", "yolov8s"}:
         return ensure_pretrained_weight(model_name)
 
-    if model_name in {"yolov8-p2", "yolov8s-p2"}:
+    if model_name in {"yolov8-p2", "yolov8n-p2"}:
         if not model_path.exists():
             model = load_yolov8_p2(transfer=True)
             model_path.parent.mkdir(parents=True, exist_ok=True)

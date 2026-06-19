@@ -11,13 +11,15 @@ import os
 from pathlib import Path
 
 import _bootstrap  # noqa: F401
+import yaml
 from _train_common import train_from_config
 
 
 VISDRONE_CONFIGS = {
     "yolov8n": "configs/experiments/visdrone_yolov8n.yaml",
+    "yolov8n-p2": "configs/experiments/visdrone_yolov8n_p2.yaml",
     "yolov8s": "configs/experiments/visdrone_yolov8s.yaml",
-    "yolov8p2": "configs/experiments/visdrone_yolov8p2.yaml",
+    "yolov8p2": "configs/experiments/visdrone_yolov8n_p2.yaml",
 }
 
 
@@ -49,6 +51,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--imgsz", type=int, default=None)
     parser.add_argument("--batch", type=int, default=None)
     parser.add_argument("--device", default=None)
+    parser.add_argument(
+        "--device-yolov8s",
+        default="0,1",
+        help="Device override for YOLOv8s. Defaults to both Kaggle T4 GPUs.",
+    )
     parser.add_argument("--workers", type=int, default=None)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument(
@@ -85,6 +92,52 @@ def find_visdrone_yaml(input_root: str | Path) -> Path:
             print(f"  {path}")
 
     return candidates[0]
+
+
+def _split_path_exists(root: Path, split_value: str | list[str]) -> bool:
+    if isinstance(split_value, list):
+        return all((root / item).exists() for item in split_value)
+    return (root / split_value).exists()
+
+
+def prepare_kaggle_dataset_yaml(data_yaml: str | Path) -> Path:
+    """Rewrite Kaggle input YAML when its relative root points outside /kaggle/input."""
+    data_yaml = Path(data_yaml)
+    with data_yaml.open("r", encoding="utf-8") as file:
+        data = yaml.safe_load(file) or {}
+
+    yaml_parent = data_yaml.parent
+    configured_root = Path(data.get("path", ""))
+    if configured_root.is_absolute():
+        resolved_root = configured_root
+    else:
+        resolved_root = (data_yaml.parent / configured_root).resolve()
+
+    train_ok = _split_path_exists(resolved_root, data.get("train", ""))
+    val_ok = _split_path_exists(resolved_root, data.get("val", ""))
+    if train_ok and val_ok:
+        return data_yaml
+
+    fallback_root = yaml_parent.resolve()
+    train_ok = _split_path_exists(fallback_root, data.get("train", ""))
+    val_ok = _split_path_exists(fallback_root, data.get("val", ""))
+    if not (train_ok and val_ok):
+        print(f"Dataset YAML root from file does not exist: {resolved_root}")
+        print(f"Fallback YAML parent also does not match train/val paths: {fallback_root}")
+        return data_yaml
+
+    data["path"] = str(fallback_root)
+    runtime_dir = Path("/kaggle/working/real_time_od/runtime")
+    if not runtime_dir.exists():
+        runtime_dir = Path("runtime")
+    runtime_dir.mkdir(parents=True, exist_ok=True)
+
+    output_yaml = runtime_dir / f"{data_yaml.stem}.kaggle.yaml"
+    with output_yaml.open("w", encoding="utf-8") as file:
+        yaml.safe_dump(data, file, sort_keys=False)
+
+    print(f"Rewrote dataset YAML for Kaggle input paths: {output_yaml}")
+    return output_yaml
 
 
 def read_kaggle_secret(secret_name: str) -> str | None:
@@ -137,9 +190,16 @@ def configure_wandb(args: argparse.Namespace, run_name: str) -> None:
         print(f"Could not update Ultralytics W&B setting automatically: {exc}")
 
 
+def resolve_device(args: argparse.Namespace, model_name: str) -> str | None:
+    if model_name == "yolov8s" and args.device_yolov8s:
+        return args.device_yolov8s
+    return args.device
+
+
 def main() -> None:
     args = parse_args()
     data = Path(args.data) if args.data else find_visdrone_yaml(args.input_root)
+    data = prepare_kaggle_dataset_yaml(data)
     print(f"VisDrone YAML: {data}")
 
     for model_name in args.models:
@@ -155,7 +215,7 @@ def main() -> None:
             epochs=args.epochs,
             imgsz=args.imgsz,
             batch=args.batch,
-            device=args.device,
+            device=resolve_device(args, model_name),
             workers=args.workers,
             dry_run=args.dry_run,
         )

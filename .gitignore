@@ -4,35 +4,14 @@ __pycache__/
 
 wandb/
 runs/
+__pycache__/
+**/__pycache__/
 
 *.pt
 *.onnx
 *.engine
 
-experiments/**
-!experiments/
-!experiments/**/
-!experiments/**/.gitkeep
-
-results/figures/**
-!results/figures/
-!results/figures/**/
-!results/figures/**/.gitkeep
-results/tables/**
-!results/tables/
-!results/tables/**/
-!results/tables/**/.gitkeep
-
-data/raw/*
-data/processed/*
-!data/raw/VisDrone/
-!data/raw/Intersection-Flow-5K/
-!data/raw/VisDrone/.gitkeep
-!data/raw/Intersection-Flow-5K/.gitkeep
-!data/processed/visdrone_yolo/
-!data/processed/intersection_flow_5k_yolo/
-!data/processed/visdrone_yolo/.gitkeep
-!data/processed/intersection_flow_5k_yolo/.gitkeep
-
-results/videos/demo_outputs/*
-!results/videos/demo_outputs/.gitkeep
+/data/
+/experiments/
+/results/
+/weights/

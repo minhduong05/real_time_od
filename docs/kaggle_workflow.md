@@ -121,13 +121,13 @@ Important files:
 - `F1_curve.png`
 - `val_batch*_pred.jpg`
 
-## 7. Train Larger Experiments
+## 7. Train Comparison Experiments
 
-After the baseline works, train the other models:
+After the baseline works, train YOLOv8n-P2 and YOLOv8s for comparison:
 
 ```bash
 !python scripts/kaggle_train_visdrone.py \
-  --models yolov8s yolov8p2 \
+  --models yolov8n-p2 yolov8s \
   --project /kaggle/working/experiments/visdrone \
   --epochs 100 \
   --batch 8 \
@@ -136,7 +136,9 @@ After the baseline works, train the other models:
   --wandb-project real-time-od-visdrone
 ```
 
-If GPU memory is not enough, reduce `--batch` to `4` or `2`.
+Use YOLOv8n-P2 to test whether adding a P2 head improves the lightweight
+YOLOv8n baseline. Use YOLOv8s as the larger-model reference. If GPU memory is
+not enough, reduce `--batch` to `4` or `2`.
 
 ## 8. W&B Notes
 

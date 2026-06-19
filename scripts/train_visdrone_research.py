@@ -10,8 +10,9 @@ from _train_common import train_from_config
 
 VISDRONE_CONFIGS = {
     "yolov8n": "configs/experiments/visdrone_yolov8n.yaml",
+    "yolov8n-p2": "configs/experiments/visdrone_yolov8n_p2.yaml",
     "yolov8s": "configs/experiments/visdrone_yolov8s.yaml",
-    "yolov8p2": "configs/experiments/visdrone_yolov8p2.yaml",
+    "yolov8p2": "configs/experiments/visdrone_yolov8n_p2.yaml",
 }
 
 
@@ -31,7 +32,7 @@ def parse_args() -> argparse.Namespace:
         "--models",
         nargs="+",
         choices=VISDRONE_CONFIGS,
-        default=["yolov8n", "yolov8s", "yolov8p2"],
+        default=["yolov8n", "yolov8n-p2", "yolov8s"],
         help="Models to train in order.",
     )
     parser.add_argument("--epochs", type=int, default=None)

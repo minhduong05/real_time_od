@@ -7,7 +7,7 @@ from _train_common import build_parser, train_from_config
 
 def main() -> None:
     parser = build_parser(__doc__)
-    parser.set_defaults(config="configs/experiments/visdrone_yolov8p2.yaml")
+    parser.set_defaults(config="configs/experiments/visdrone_yolov8n_p2.yaml")
     args = parser.parse_args()
     train_from_config(args)
 

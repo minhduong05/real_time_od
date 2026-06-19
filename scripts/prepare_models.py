@@ -1,4 +1,4 @@
-"""Prepare pretrained YOLO baselines and the YOLOv8s-P2 transfer model."""
+"""Prepare pretrained YOLO baselines and the YOLOv8n-P2 transfer model."""
 
 from __future__ import annotations
 
@@ -18,13 +18,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--check-p2",
         action="store_true",
-        help="Instantiate YOLOv8s-P2 and transfer compatible YOLOv8s weights.",
+        help="Instantiate YOLOv8n-P2 and transfer compatible YOLOv8n weights.",
     )
     parser.add_argument(
         "--save-p2",
         type=Path,
         default=None,
-        help="Optional path to save the initialized YOLOv8s-P2 checkpoint.",
+        help="Optional path to save the initialized YOLOv8n-P2 checkpoint.",
     )
     return parser.parse_args()
 
@@ -39,7 +39,7 @@ def main() -> None:
     if args.check_p2 or args.save_p2:
         model = load_yolov8_p2(transfer=True)
         print("yolov8-p2: created from project P2 architecture config")
-        print("yolov8-p2: compatible weights transferred from YOLOv8s")
+        print("yolov8-p2: compatible weights transferred from YOLOv8n")
 
         if args.save_p2:
             args.save_p2.parent.mkdir(parents=True, exist_ok=True)

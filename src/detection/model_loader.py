@@ -15,7 +15,7 @@ MODEL_CONFIGS = {
     "yolov8n": PROJECT_ROOT / "configs/models/yolov8n.yaml",
     "yolov8s": PROJECT_ROOT / "configs/models/yolov8s.yaml",
     "yolov8-p2": PROJECT_ROOT / "configs/models/yolov8-p2.project.yaml",
-    "yolov8s-p2": PROJECT_ROOT / "configs/models/yolov8-p2.project.yaml",
+    "yolov8n-p2": PROJECT_ROOT / "configs/models/yolov8-p2.project.yaml",
 }
 
 
@@ -93,7 +93,7 @@ def ensure_baseline_pretrained_weights() -> dict[str, Path]:
 
 
 def load_yolov8_p2(transfer: bool = True):
-    """Create YOLOv8s-P2 and optionally transfer compatible YOLOv8s weights."""
+    """Create YOLOv8n-P2 and optionally transfer compatible YOLOv8n weights."""
     YOLO = _require_ultralytics()
     config = get_model_config("yolov8-p2")
     model_cfg = resolve_project_path(config["model_cfg"])
@@ -110,7 +110,7 @@ def load_yolov8_p2(transfer: bool = True):
 
 def load_model(model_name_or_path: str, transfer_p2: bool = True):
     """Load a project model by alias or a direct Ultralytics model path."""
-    if model_name_or_path in {"yolov8-p2", "yolov8s-p2"}:
+    if model_name_or_path in {"yolov8-p2", "yolov8n-p2"}:
         return load_yolov8_p2(transfer=transfer_p2)
 
     if model_name_or_path in {"yolov8n", "yolov8s"}:
