@@ -1,0 +1,12 @@
+# Project dataset config for Intersection-Flow-5K after conversion to YOLO format.
+path: data/processed/intersection_flow_5k_yolo
+train: images/train
+val: images/val
+test: images/test
+
+names:
+  0: car
+  1: bus
+  2: truck
+  3: motorcycle
+

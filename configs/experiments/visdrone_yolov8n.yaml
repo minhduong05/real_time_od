@@ -1,0 +1,9 @@
+experiment: visdrone_yolov8n
+dataset: configs/datasets/visdrone.yaml
+model_name: yolov8n
+model: weights/pretrained/yolov8n.pt
+project: experiments/visdrone
+name: yolov8n
+epochs: 100
+imgsz: 640
+batch: 16
