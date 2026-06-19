@@ -17,6 +17,5 @@ names:
   9: motor
 
 reference:
-  zip: ultralytics-main.zip
-  file: ultralytics-main/ultralytics/cfg/datasets/VisDrone.yaml
-
+  source: Ultralytics VisDrone dataset config
+  url: https://docs.ultralytics.com/datasets/detect/visdrone/

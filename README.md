@@ -14,14 +14,28 @@ This project studies YOLOv8-P2 for small vehicle detection and applies it to rea
 - Models: YOLOv8s, YOLOv8-P2
 - Features: vehicle detection, vehicle counting, traffic density estimation, congestion warning
 
-## Ultralytics Reference
+## Dataset Preparation
 
-The archive `ultralytics-main.zip` is kept at the repository root for reference.
-Useful files inside it:
+VisDrone can be downloaded directly from Ultralytics assets and converted to
+YOLO format:
 
-- `ultralytics-main/ultralytics/cfg/datasets/VisDrone.yaml`
-- `ultralytics-main/ultralytics/cfg/models/v8/yolov8.yaml`
-- `ultralytics-main/ultralytics/cfg/models/v8/yolov8-p2.yaml`
+```bash
+python scripts/prepare_visdrone.py
+```
+
+Intersection-Flow-5K is hosted on Kaggle as `starsw/intersection-flow-5k`.
+After configuring Kaggle credentials, run:
+
+```bash
+python scripts/prepare_intersection_flow.py --kaggle
+```
+
+If the dataset is downloaded manually, place the zip or extracted folder under
+`data/raw/Intersection-Flow-5K`, then run:
+
+```bash
+python scripts/prepare_intersection_flow.py
+```
 
 ## Pretrained Models
 
@@ -43,7 +57,21 @@ Expected local files:
 
 ## Training
 
+The preferred workflow is to fine-tune on Kaggle. See:
+
+```text
+docs/kaggle_workflow.md
+```
+
 VisDrone research experiments:
+
+```bash
+python scripts/train_visdrone_research.py \
+  --data /kaggle/input/visdrone-yolo/visdrone.yaml \
+  --project /kaggle/working/experiments/visdrone
+```
+
+Or run each model separately:
 
 ```bash
 python scripts/train_visdrone.py --config configs/experiments/visdrone_yolov8n.yaml
@@ -59,3 +87,12 @@ python scripts/train_traffic.py --config configs/experiments/traffic_yolov8p2.ya
 ```
 
 Use `--dry-run` to check paths without starting training.
+
+On Kaggle, override dataset and output paths:
+
+```bash
+python scripts/train_visdrone.py \
+  --config configs/experiments/visdrone_yolov8p2.yaml \
+  --data /kaggle/input/visdrone-yolo/visdrone.yaml \
+  --project /kaggle/working/experiments/visdrone
+```

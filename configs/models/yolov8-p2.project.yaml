@@ -5,6 +5,6 @@ scale: s
 pretrained_strategy: partial_transfer_from_yolov8s
 transfer_from: weights/pretrained/yolov8s.pt
 reference:
-  zip: ultralytics-main.zip
-  file: ultralytics-main/ultralytics/cfg/models/v8/yolov8-p2.yaml
+  source: Ultralytics YOLOv8-P2 architecture config
+  path_hint: ultralytics/cfg/models/v8/yolov8-p2.yaml
 notes: YOLOv8s-P2 variant with an added P2 detection head for small objects. New P2 layers are initialized randomly; compatible layers are transferred from YOLOv8s.

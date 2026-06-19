@@ -5,8 +5,11 @@ val: images/val
 test: images/test
 
 names:
-  0: car
+  0: vehicle
   1: bus
-  2: truck
-  3: motorcycle
-
+  2: bicycle
+  3: pedestrian
+  4: engine
+  5: truck
+  6: tricycle
+  7: obstacle

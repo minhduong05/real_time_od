@@ -24,6 +24,9 @@ def read_experiment_config(path: str | Path) -> dict[str, Any]:
 def build_parser(description: str) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("--config", default=None, help="Path to an experiment YAML file.")
+    parser.add_argument("--data", default=None, help="Override dataset YAML path, useful on Kaggle.")
+    parser.add_argument("--project", default=None, help="Override output project directory.")
+    parser.add_argument("--name", default=None, help="Override experiment run name.")
     parser.add_argument("--epochs", type=int, default=None, help="Override training epochs.")
     parser.add_argument("--imgsz", type=int, default=None, help="Override image size.")
     parser.add_argument("--batch", type=int, default=None, help="Override batch size.")
@@ -56,10 +59,16 @@ def train_from_config(args: argparse.Namespace) -> None:
     config_path = resolve_project_path(args.config)
     config = read_experiment_config(config_path)
 
-    data = resolve_project_path(config["dataset"])
+    data = Path(args.data) if args.data else resolve_project_path(config["dataset"])
+    if not data.is_absolute():
+        data = resolve_project_path(data)
+
     model_path = _resolve_training_model(config)
-    project = resolve_project_path(config.get("project", "experiments"))
-    name = config.get("name", config.get("experiment", model_path.stem))
+    project = Path(args.project) if args.project else resolve_project_path(config.get("project", "experiments"))
+    if not project.is_absolute():
+        project = resolve_project_path(project)
+
+    name = args.name or config.get("name", config.get("experiment", model_path.stem))
 
     train_args = {
         "data": str(data),
