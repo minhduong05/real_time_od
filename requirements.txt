@@ -1,9 +1,9 @@
 ultralytics
 wandb
-opencv-python
-numpy
-pandas
-matplotlib
+opencv-python-headless
+numpy<2.4
+pandas<3.0
+matplotlib<3.11
 seaborn
 tqdm
 pyyaml

@@ -64,10 +64,12 @@ instead of creating a nested `real_time_od/real_time_od` path.
 ## 4. Install Dependencies
 
 ```bash
-!pip install -q -U ultralytics wandb opencv-python pyyaml pandas matplotlib seaborn tqdm
+!pip install -q -r requirements.txt
 ```
 
-If Kaggle already has compatible packages, this cell is still safe to run.
+Avoid `pip install -U -r requirements.txt` on Kaggle. A broad upgrade can pull
+core notebook packages such as `numpy`, `pandas`, and `matplotlib` beyond the
+versions expected by preinstalled Kaggle libraries.
 
 ## 5. Check Dataset Discovery
 
