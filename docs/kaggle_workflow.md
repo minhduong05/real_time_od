@@ -1,154 +1,169 @@
 # Kaggle Workflow
 
-This project is designed to keep code in the local repository and run heavy
-fine-tuning on Kaggle.
+This repository should stay code-first: keep source code, configs, scripts, and
+documentation in GitHub. Keep datasets, training logs, and checkpoints in
+Kaggle outputs and W&B.
 
-## 1. Prepare Kaggle Notebook
+## 1. Push the Repository
 
-Create a Kaggle Notebook and enable GPU:
+Before opening Kaggle, push the cleaned repository to GitHub:
 
-- Accelerator: GPU T4 x2 or P100
-- Internet: On, at least for the first run if pretrained weights are not attached
+```bash
+git status
+git add .
+git commit -m "Add Kaggle VisDrone training workflow"
+git push
+```
 
-Add this repository as code by either:
+The repository intentionally ignores heavy runtime outputs such as `.pt`,
+`wandb/`, `runs/`, `experiments/`, and generated result tables/figures.
 
-- uploading the project folder as a Kaggle Dataset, or
-- cloning/pulling the repository inside the notebook.
+## 2. Create the Kaggle Notebook
 
-## 2. Attach Datasets
+In Kaggle:
 
-### Intersection-Flow-5K
+- Create or open a notebook.
+- Enable `Accelerator: GPU`.
+- Enable `Internet: On` for package install, GitHub clone, pretrained weights,
+  and W&B sync.
+- Add the VisDrone dataset with `Add Input`.
 
-Use Kaggle `Add Input` and attach:
+If you use W&B, add a Kaggle secret:
 
 ```text
-starsw/intersection-flow-5k
+Name: WANDB_API_KEY
+Value: your W&B API key
 ```
 
-Find the dataset YAML or root path in the notebook:
+Get the key from your W&B account settings or authorization page.
 
-```python
-import os
-for root, dirs, files in os.walk("/kaggle/input/intersection-flow-5k"):
-    if "intersection.yaml" in files:
-        print(os.path.join(root, "intersection.yaml"))
+## 3. Link GitHub Code
+
+Option A: use Kaggle's GitHub integration if available.
+
+Option B: clone manually in the first notebook cell:
+
+```bash
+%cd /kaggle/working
+!git clone https://github.com/<your-user>/<your-repo>.git real_time_od
+%cd /kaggle/working/real_time_od
 ```
 
-Use the printed path as `--data`.
+If you attached the repository as a Kaggle Dataset instead, copy only the code
+into `/kaggle/working` so scripts can write outputs:
 
-### VisDrone
+```bash
+!mkdir -p /kaggle/working/real_time_od
+!cp -r /kaggle/input/<repo-dataset-folder>/real_time_od/. /kaggle/working/real_time_od/
+%cd /kaggle/working/real_time_od
+```
 
-Preferred options:
+The trailing `/.` matters: it copies the contents of the repository folder
+instead of creating a nested `real_time_od/real_time_od` path.
 
-1. Attach an existing VisDrone YOLO-format Kaggle Dataset.
-2. Or run `scripts/prepare_visdrone.py` once in Kaggle and save the converted
-   output as your own Kaggle Dataset for reuse.
+## 4. Install Dependencies
 
-The expected YOLO structure is:
+```bash
+!pip install -q -U ultralytics wandb opencv-python pyyaml pandas matplotlib seaborn tqdm
+```
+
+If Kaggle already has compatible packages, this cell is still safe to run.
+
+## 5. Check Dataset Discovery
+
+The Kaggle entrypoint can find `visdrone.yaml` automatically:
+
+```bash
+!python scripts/kaggle_train_visdrone.py --dry-run
+```
+
+If multiple files are found, pass the exact one:
+
+```bash
+!python scripts/kaggle_train_visdrone.py \
+  --data /kaggle/input/<dataset-folder>/VisDrone_Dataset/visdrone.yaml \
+  --dry-run
+```
+
+You do not need to copy VisDrone into this repository when the dataset is
+already attached under `/kaggle/input`.
+
+## 6. Train a Small Baseline First
+
+Start with YOLOv8n to verify the full pipeline:
+
+```bash
+!python scripts/kaggle_train_visdrone.py \
+  --models yolov8n \
+  --project /kaggle/working/experiments/visdrone \
+  --epochs 20 \
+  --batch 8 \
+  --workers 2 \
+  --device 0 \
+  --wandb-project real-time-od-visdrone
+```
+
+Outputs are written to:
 
 ```text
-dataset_root/
-+-- images/
-|   +-- train/
-|   +-- val/
-|   +-- test/
-+-- labels/
-|   +-- train/
-|   +-- val/
-|   +-- test/
-+-- visdrone.yaml
+/kaggle/working/experiments/visdrone/yolov8n/
 ```
 
-## 3. Install Dependencies
+Important files:
 
-Inside Kaggle:
-
-```bash
-pip install -r requirements.txt
-```
-
-If Kaggle already has compatible `ultralytics` and `ultralytics-thop`, this can
-be skipped or limited to missing packages.
-
-## 4. Prepare Weights
-
-Create YOLOv8n, YOLOv8s, and YOLOv8s-P2 initial weights:
-
-```bash
-python scripts/prepare_models.py --check-p2 --save-p2 weights/pretrained/yolov8s-p2-init.pt
-```
-
-YOLOv8-P2 has no official pretrained checkpoint. The project builds YOLOv8s-P2
-from the architecture config and transfers compatible weights from YOLOv8s.
-
-## 5. Train VisDrone Research Experiments
-
-Replace `/kaggle/input/visdrone-yolo/visdrone.yaml` with the actual path.
-
-One-command version:
-
-```bash
-python scripts/train_visdrone_research.py \
-  --data /kaggle/input/visdrone-yolo/visdrone.yaml \
-  --project /kaggle/working/experiments/visdrone \
-  --device 0
-```
-
-Equivalent separate commands:
-
-```bash
-python scripts/train_visdrone.py \
-  --config configs/experiments/visdrone_yolov8n.yaml \
-  --data /kaggle/input/visdrone-yolo/visdrone.yaml \
-  --project /kaggle/working/experiments/visdrone \
-  --device 0
-
-python scripts/train_visdrone.py \
-  --config configs/experiments/visdrone_yolov8s.yaml \
-  --data /kaggle/input/visdrone-yolo/visdrone.yaml \
-  --project /kaggle/working/experiments/visdrone \
-  --device 0
-
-python scripts/train_visdrone.py \
-  --config configs/experiments/visdrone_yolov8p2.yaml \
-  --data /kaggle/input/visdrone-yolo/visdrone.yaml \
-  --project /kaggle/working/experiments/visdrone \
-  --device 0
-```
-
-## 6. Train Traffic Experiments
-
-Replace `/kaggle/input/intersection-flow-5k/Intersection-Flow-5K/intersection.yaml`
-with the actual path printed in step 2.
-
-```bash
-python scripts/train_traffic.py \
-  --config configs/experiments/traffic_yolov8s.yaml \
-  --data /kaggle/input/intersection-flow-5k/Intersection-Flow-5K/intersection.yaml \
-  --project /kaggle/working/experiments/traffic \
-  --device 0
-
-python scripts/train_traffic.py \
-  --config configs/experiments/traffic_yolov8p2.yaml \
-  --data /kaggle/input/intersection-flow-5k/Intersection-Flow-5K/intersection.yaml \
-  --project /kaggle/working/experiments/traffic \
-  --device 0
-```
-
-## 7. Save Outputs
-
-After training, download or commit these Kaggle outputs:
-
-```text
-/kaggle/working/experiments/
-/kaggle/working/weights/
-```
-
-Important files for the report:
-
-- `results.csv`
 - `weights/best.pt`
+- `weights/last.pt`
+- `results.csv`
 - `confusion_matrix.png`
 - `PR_curve.png`
 - `F1_curve.png`
 - `val_batch*_pred.jpg`
+
+## 7. Train Larger Experiments
+
+After the baseline works, train the other models:
+
+```bash
+!python scripts/kaggle_train_visdrone.py \
+  --models yolov8s yolov8p2 \
+  --project /kaggle/working/experiments/visdrone \
+  --epochs 100 \
+  --batch 8 \
+  --workers 2 \
+  --device 0 \
+  --wandb-project real-time-od-visdrone
+```
+
+If GPU memory is not enough, reduce `--batch` to `4` or `2`.
+
+## 8. W&B Notes
+
+The Kaggle entrypoint enables Ultralytics W&B logging when `--wandb-project` is
+provided. It reads the API key from the `WANDB_API_KEY` environment variable or
+the Kaggle secret with the same name.
+
+Use offline mode if internet is unstable:
+
+```bash
+!python scripts/kaggle_train_visdrone.py \
+  --models yolov8n \
+  --epochs 20 \
+  --batch 8 \
+  --device 0 \
+  --wandb-project real-time-od-visdrone \
+  --wandb-mode offline
+```
+
+W&B should show links in the cell output after training starts.
+
+## 9. Save Outputs
+
+Kaggle automatically keeps `/kaggle/working` as notebook output when you save a
+version. For the report, download or reference:
+
+```text
+/kaggle/working/experiments/
+```
+
+For long-term model storage, prefer W&B Artifacts or Kaggle Dataset versions
+instead of committing checkpoints to GitHub.

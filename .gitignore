@@ -9,6 +9,20 @@ runs/
 *.onnx
 *.engine
 
+experiments/**
+!experiments/
+!experiments/**/
+!experiments/**/.gitkeep
+
+results/figures/**
+!results/figures/
+!results/figures/**/
+!results/figures/**/.gitkeep
+results/tables/**
+!results/tables/
+!results/tables/**/
+!results/tables/**/.gitkeep
+
 data/raw/*
 data/processed/*
 !data/raw/VisDrone/
@@ -22,4 +36,3 @@ data/processed/*
 
 results/videos/demo_outputs/*
 !results/videos/demo_outputs/.gitkeep
-

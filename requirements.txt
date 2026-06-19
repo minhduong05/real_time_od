@@ -1,4 +1,5 @@
 ultralytics
+wandb
 opencv-python
 numpy
 pandas

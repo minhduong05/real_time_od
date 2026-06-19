@@ -63,6 +63,21 @@ The preferred workflow is to fine-tune on Kaggle. See:
 docs/kaggle_workflow.md
 ```
 
+For Kaggle notebooks that attach this GitHub repository and a VisDrone dataset,
+use the Kaggle entrypoint. It auto-discovers `visdrone.yaml` under
+`/kaggle/input`, writes outputs under `/kaggle/working`, and can enable W&B:
+
+```bash
+python scripts/kaggle_train_visdrone.py \
+  --models yolov8n \
+  --project /kaggle/working/experiments/visdrone \
+  --epochs 20 \
+  --batch 8 \
+  --workers 2 \
+  --device 0 \
+  --wandb-project real-time-od-visdrone
+```
+
 VisDrone research experiments:
 
 ```bash
