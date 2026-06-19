@@ -1,0 +1,7 @@
+model: yolov8n-p2
+dataset: VisDrone
+data: /kaggle/working/visdrone_fixed.yaml
+project: /kaggle/working/experiments/visdrone
+run: yolov8n-p2
+best: /kaggle/working/export/VisDrone/yolov8n-p2/best.pt
+last: /kaggle/working/export/VisDrone/yolov8n-p2/last.pt
