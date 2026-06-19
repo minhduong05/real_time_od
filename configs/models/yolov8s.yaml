@@ -1,6 +1,0 @@
-name: yolov8s
-task: detect
-ultralytics_model: yolov8s.pt
-weights: weights/pretrained/yolov8s.pt
-pretrained: true
-notes: Strong baseline for traffic experiments.

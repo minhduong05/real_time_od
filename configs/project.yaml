@@ -1,0 +1,53 @@
+project:
+  name: real_time_od
+  task: detect
+
+classes:
+  - pedestrian
+  - people
+  - bicycle
+  - car
+  - van
+  - truck
+  - tricycle
+  - awning-tricycle
+  - bus
+  - motor
+
+datasets:
+  VisDrone:
+    model_dir: models/VisDrone
+  Intersection-Flow-5K:
+    model_dir: models/Intersection-Flow-5K
+
+models:
+  definitions:
+    yolov8n:
+      type: ultralytics
+      source: yolov8n.pt
+    yolov8s:
+      type: ultralytics
+      source: yolov8s.pt
+    yolov8n-p2:
+      type: project
+      config: configs/models/yolov8n-p2.yaml
+      transfer_from: yolov8n.pt
+
+inference:
+  source: 0
+  imgsz: 640
+  conf: 0.25
+  iou: 0.7
+  device:
+
+kaggle:
+  data: /kaggle/working/visdrone.yaml
+  dataset_name: VisDrone
+  project: /kaggle/working/runs
+  export_dir: /kaggle/working/export
+  train:
+    epochs: 100
+    imgsz: 640
+    batch: 16
+    workers: 4
+    device: 0,1

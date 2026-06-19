@@ -1,9 +1,0 @@
-experiment: traffic_yolov8s
-dataset: configs/datasets/intersection_flow_5k.yaml
-model_name: yolov8s
-model: weights/pretrained/yolov8s.pt
-project: experiments/traffic
-name: yolov8s
-epochs: 100
-imgsz: 640
-batch: 16

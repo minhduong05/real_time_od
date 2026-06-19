@@ -1,114 +1,103 @@
-# YOLOv8-P2 Small Vehicle Detection and Traffic Monitoring
+# Real-Time Object Detection
 
-This project studies YOLOv8-P2 for small vehicle detection and applies it to real-time traffic surveillance.
+This repo is split into two clean workflows:
 
-## Research Track
+- Kaggle: train, tune, and export checkpoints with GPU.
+- Local: run inference/app with a checkpoint downloaded from Kaggle.
 
-- Dataset: VisDrone
-- Models: YOLOv8n, YOLOv8n-P2, YOLOv8s
-- Metrics: Precision, Recall, mAP50, mAP50-95, FPS
+No dataset or `.pt` checkpoint is committed to git.
 
-## Application Track
-
-- Dataset: Intersection-Flow-5K and real traffic videos
-- Models: YOLOv8n-P2 and YOLOv8s
-- Features: vehicle detection, vehicle counting, traffic density estimation, congestion warning
-
-## Dataset Preparation
-
-The Kaggle workflow uses datasets attached under `/kaggle/input`, so the
-repository does not store dataset folders. For local experiments only, VisDrone
-can be downloaded directly from Ultralytics assets and converted to YOLO format:
-
-```bash
-python scripts/prepare_visdrone.py
-```
-
-Intersection-Flow-5K is hosted on Kaggle as `starsw/intersection-flow-5k`.
-After configuring Kaggle credentials, run:
-
-```bash
-python scripts/prepare_intersection_flow.py --kaggle
-```
-
-If the dataset is downloaded manually, place the zip or extracted folder under
-`data/raw/Intersection-Flow-5K`, then run:
-
-```bash
-python scripts/prepare_intersection_flow.py
-```
-
-## Pretrained Models
-
-YOLOv8n and YOLOv8s use official pretrained weights. YOLOv8n-P2 does not have
-an official pretrained checkpoint, so this project initializes YOLOv8n-P2 from
-the P2 architecture and partially transfers compatible weights from YOLOv8n.
-
-Prepare all initial weights:
-
-```bash
-python scripts/prepare_models.py --check-p2 --save-p2 weights/pretrained/yolov8n-p2-init.pt
-```
-
-Expected local files:
-
-- `weights/pretrained/yolov8n.pt`
-- `weights/pretrained/yolov8s.pt`
-- `weights/pretrained/yolov8n-p2-init.pt`
-
-## Training
-
-The preferred workflow is to fine-tune on Kaggle. See:
+## Layout
 
 ```text
-docs/kaggle_workflow.md
+app/                         # local inference CLI
+configs/                     # shared project/model/dataset settings
+kaggle/                      # Kaggle-only train/tune/export script
+models/
+  VisDrone/                  # downloaded VisDrone checkpoints
+  Intersection-Flow-5K/       # downloaded Intersection-Flow-5K checkpoints
+scripts/                     # local utility checks
+src/realtime_od/             # local inference package
 ```
 
-For Kaggle notebooks that attach this GitHub repository and a VisDrone dataset,
-use the Kaggle entrypoint. It auto-discovers `visdrone.yaml` under
-`/kaggle/input`, writes outputs under `/kaggle/working`, and can enable W&B:
+Use this checkpoint naming convention:
 
-```bash
-python scripts/kaggle_train_visdrone.py \
-  --models yolov8n \
-  --project /kaggle/working/experiments/visdrone \
-  --epochs 20 \
-  --batch 8 \
-  --workers 2 \
-  --device 0 \
-  --wandb-project real-time-od-visdrone
+```text
+models/<Dataset>/<Model>/best.pt
+models/<Dataset>/<Model>/last.pt
 ```
 
-VisDrone research experiments:
+Examples:
 
-```bash
-python scripts/train_visdrone_research.py \
-  --data /kaggle/input/visdrone-yolo/visdrone.yaml \
-  --project /kaggle/working/experiments/visdrone
+```text
+models/VisDrone/yolov8n/best.pt
+models/VisDrone/yolov8n-p2/best.pt
+models/Intersection-Flow-5K/yolov8n/best.pt
 ```
 
-Or run each model separately:
+## Kaggle Train
+
+Install dependencies:
 
 ```bash
-python scripts/train_visdrone.py --config configs/experiments/visdrone_yolov8n.yaml
-python scripts/train_visdrone.py --config configs/experiments/visdrone_yolov8n_p2.yaml
-python scripts/train_visdrone.py --config configs/experiments/visdrone_yolov8s.yaml
+pip install -r kaggle/requirements.txt
 ```
 
-Traffic application experiments:
+Train YOLOv8n-P2 on VisDrone:
 
 ```bash
-python scripts/train_traffic.py --config configs/experiments/traffic_yolov8s.yaml
-python scripts/train_traffic.py --config configs/experiments/traffic_yolov8n_p2.yaml
+python kaggle/train.py \
+  --dataset-name VisDrone \
+  --data /kaggle/working/visdrone.yaml \
+  --model yolov8n-p2 \
+  --epochs 100 \
+  --imgsz 640 \
+  --batch 16 \
+  --device 0,1
 ```
 
-Use `--dry-run` to check paths without starting training.
+The export will be written to:
 
-On Kaggle, override dataset and output paths:
+```text
+/kaggle/working/export/VisDrone/yolov8n-p2/best.pt
+/kaggle/working/export/VisDrone/yolov8n-p2/last.pt
+/kaggle/working/export/VisDrone/yolov8n-p2/run_info.yaml
+```
+
+Zip it on Kaggle:
 
 ```bash
-python scripts/train_visdrone.py \
-  --config configs/experiments/visdrone_yolov8n_p2.yaml \
-  --data /kaggle/input/visdrone-yolo/visdrone.yaml \
-  --project /kaggle/working/experiments/visdrone
+zip -r /kaggle/working/VisDrone_yolov8n-p2_export.zip /kaggle/working/export/VisDrone/yolov8n-p2
+```
+
+Download the zip, then place the files under:
+
+```text
+models/VisDrone/yolov8n-p2/
+```
+
+## Local Inference
+
+Install local dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Run with an explicit checkpoint:
+
+```bash
+python app/run.py --weights models/VisDrone/yolov8n-p2/best.pt --source 0
+```
+
+Run a video file:
+
+```bash
+python app/run.py --weights models/VisDrone/yolov8n-p2/best.pt --source path/to/video.mp4
+```
+
+Check setup:
+
+```bash
+python scripts/verify_setup.py
 ```

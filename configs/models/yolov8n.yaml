@@ -1,6 +1,0 @@
-name: yolov8n
-task: detect
-ultralytics_model: yolov8n.pt
-weights: weights/pretrained/yolov8n.pt
-pretrained: true
-notes: Baseline lightweight YOLOv8 model.

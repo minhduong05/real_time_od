@@ -1,17 +1,24 @@
 __pycache__/
-*.pyc
-.ipynb_checkpoints/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
 
-wandb/
+.env
+.venv/
+venv/
+
 runs/
-__pycache__/
-**/__pycache__/
+outputs/
+logs/
 
-*.pt
-*.onnx
-*.engine
+models/**/*.pt
+models/**/*.onnx
+models/**/*.engine
+models/**/*.torchscript
+!models/.gitkeep
+!models/**/.gitkeep
 
-/data/
-/experiments/
-/results/
-/weights/
+kaggle/outputs/
+*.zip

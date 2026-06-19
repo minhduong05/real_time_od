@@ -1,15 +1,10 @@
-# Project-owned YOLOv8n-P2 architecture.
-# Based on Ultralytics YOLOv8-P2 with scale fixed to "n" for fair comparison
-# against YOLOv8n.
+# YOLOv8n-P2 for VisDrone-style small object detection.
+# The architecture keeps YOLOv8 nano scaling and adds a P2 detection branch.
 
-nc: 80
+nc: 10
 scale: n
 scales:
   n: [0.33, 0.25, 1024]
-  s: [0.33, 0.50, 1024]
-  m: [0.67, 0.75, 768]
-  l: [1.00, 1.00, 512]
-  x: [1.00, 1.25, 512]
 
 backbone:
   - [-1, 1, Conv, [64, 3, 2]]
