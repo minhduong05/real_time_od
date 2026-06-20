@@ -174,7 +174,62 @@ for split in ("train", "val", "test"):
     assert image_count > 0, f"Split {split} không có ảnh"
 ~~~
 
-**Đúng khi:** có đủ train, val, test. Số file labels có thể ít hơn số ảnh nếu một ảnh không có object.
+Trong ảnh cấu trúc dataset còn có thư mục annotations. Thư mục đó không dùng ở đây: Ultralytics train trực tiếp từ labels, vì labels đã là YOLO format.
+
+## Cell 5b -- Xác thực toàn bộ labels là YOLO format
+
+Cell này đọc toàn bộ file label trước khi train. Nó kiểm tra mỗi object có đúng năm giá trị: class_id, x_center, y_center, width, height; class_id thuộc 0 đến 7 và bốn tọa độ đã chuẩn hóa trong đoạn 0 đến 1.
+
+~~~python
+from collections import Counter
+
+class_counts = Counter()
+invalid_rows = []
+total_objects = 0
+
+for split in ("train", "val", "test"):
+    labels_dir = DATASET_ROOT / "labels" / split
+    for label_path in sorted(labels_dir.glob("*.txt")):
+        for line_number, line in enumerate(
+            label_path.read_text(encoding="utf-8").splitlines(), start=1
+        ):
+            if not line.strip():
+                continue
+
+            fields = line.split()
+            if len(fields) != 5:
+                invalid_rows.append((str(label_path), line_number, line))
+                continue
+
+            try:
+                class_id = int(fields[0])
+                coordinates = [float(value) for value in fields[1:]]
+            except ValueError:
+                invalid_rows.append((str(label_path), line_number, line))
+                continue
+
+            if class_id not in range(len(CLASS_NAMES)) or not all(
+                0.0 <= value <= 1.0 for value in coordinates
+            ):
+                invalid_rows.append((str(label_path), line_number, line))
+                continue
+
+            class_counts[CLASS_NAMES[class_id]] += 1
+            total_objects += 1
+
+print("Tổng số object:", total_objects)
+print("Số object theo class:")
+for class_name in CLASS_NAMES:
+    print(f"  {class_name:12s} {class_counts[class_name]}")
+
+assert not invalid_rows, (
+    f"Có {len(invalid_rows)} label row không đúng YOLO format. "
+    f"Ví dụ: {invalid_rows[:5]}"
+)
+assert total_objects > 0, "Không đọc được object nào từ labels."
+~~~
+
+**Đúng khi:** không có AssertionError; mọi class đều được in số lượng object. Nếu có class có số lượng 0 thì không train ngay, cần kiểm tra dữ liệu hoặc classes.txt.
 
 ## Cell 6 -- Tạo YAML an toàn cho Kaggle
 
@@ -345,4 +400,3 @@ Trong project intersection-flow-5k-yolov8n-p2, kiểm tra:
 5. Epoch có mAP50-95 tốt nhất tương ứng checkpoint best.pt.
 
 Sau fine-tune, dùng best.pt để test trên split test đúng một lần. Tách test và ứng dụng tracking/counting sang notebook khác để báo cáo rõ train-val-test.
-
