@@ -53,6 +53,23 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--export-dir", default=config["kaggle"]["export_dir"])
     parser.add_argument("--tune", action="store_true", help="Run Ultralytics hyperparameter tuning.")
     parser.add_argument("--iterations", type=int, default=20, help="Tuning iterations when --tune is used.")
+    # Optional training overrides. Leaving these unset preserves the existing
+    # Ultralytics defaults and the current VisDrone training workflow.
+    parser.add_argument("--optimizer", default=None, help="Ultralytics optimizer, e.g. AdamW or SGD.")
+    parser.add_argument("--lr0", type=float, default=None, help="Initial learning rate.")
+    parser.add_argument("--lrf", type=float, default=None, help="Final learning-rate factor.")
+    parser.add_argument("--weight-decay", type=float, default=None, help="Optimizer weight decay.")
+    parser.add_argument("--warmup-epochs", type=float, default=None, help="Number of warmup epochs.")
+    parser.add_argument("--cos-lr", action="store_true", help="Use a cosine learning-rate schedule.")
+    parser.add_argument("--patience", type=int, default=None, help="Early-stopping patience in epochs.")
+    parser.add_argument("--close-mosaic", type=int, default=None, help="Disable mosaic for final N epochs.")
+    parser.add_argument("--mosaic", type=float, default=None, help="Mosaic augmentation probability.")
+    parser.add_argument("--mixup", type=float, default=None, help="MixUp augmentation probability.")
+    parser.add_argument("--fliplr", type=float, default=None, help="Left-right flip probability.")
+    parser.add_argument("--hsv-h", type=float, default=None, help="HSV hue augmentation gain.")
+    parser.add_argument("--hsv-s", type=float, default=None, help="HSV saturation augmentation gain.")
+    parser.add_argument("--hsv-v", type=float, default=None, help="HSV value augmentation gain.")
+    parser.add_argument("--seed", type=int, default=None, help="Random seed for reproducibility.")
     parser.add_argument("--dry-run", action="store_true", help="Print resolved setup without training.")
     return parser.parse_args()
 
@@ -121,6 +138,26 @@ def main() -> None:
     export_dir = Path(args.export_dir)
     run_name = args.name or args.model
 
+    optional_train_args = {
+        "optimizer": args.optimizer,
+        "lr0": args.lr0,
+        "lrf": args.lrf,
+        "weight_decay": args.weight_decay,
+        "warmup_epochs": args.warmup_epochs,
+        "patience": args.patience,
+        "close_mosaic": args.close_mosaic,
+        "mosaic": args.mosaic,
+        "mixup": args.mixup,
+        "fliplr": args.fliplr,
+        "hsv_h": args.hsv_h,
+        "hsv_s": args.hsv_s,
+        "hsv_v": args.hsv_v,
+        "seed": args.seed,
+    }
+    train_overrides = {key: value for key, value in optional_train_args.items() if value is not None}
+    if args.cos_lr:
+        train_overrides["cos_lr"] = True
+
     train_args = {
         "data": str(data_yaml),
         "epochs": args.epochs,
@@ -132,6 +169,7 @@ def main() -> None:
         "name": run_name,
         "exist_ok": True,
     }
+    train_args.update(train_overrides)
 
     print("Kaggle training setup")
     print(f"  model: {args.model}")
@@ -146,18 +184,7 @@ def main() -> None:
 
     model = build_model(args.model, config)
     if args.tune:
-        model.tune(
-            data=str(data_yaml),
-            epochs=args.epochs,
-            iterations=args.iterations,
-            imgsz=args.imgsz,
-            batch=args.batch,
-            workers=args.workers,
-            device=args.device,
-            project=str(project),
-            name=run_name,
-            exist_ok=True,
-        )
+        model.tune(**train_args, iterations=args.iterations)
     else:
         model.train(**train_args)
 

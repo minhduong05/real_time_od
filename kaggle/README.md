@@ -2,11 +2,18 @@
 
 This folder is for Kaggle only. Use it to train, tune, and export checkpoints.
 
-For the full VisDrone + W&B notebook workflow, see:
+For the full VisDrone + W&B notebook workflows, see:
 
 ```text
 kaggle/VISDRONE_RUN_GUIDE.md
+kaggle/VISDRONE_TEST_BENCHMARK_GUIDE.md
+kaggle/INTERSECTION_FLOW_5K_YOLOV8N_P2_TRAIN_GUIDE.md
 ```
+
+The Intersection-Flow-5K guide is the primary workflow for the traffic
+monitoring application. It trains the project YOLOv8n-P2 architecture with
+transfer learning, logs train/validation to a dedicated W&B project, and
+exports the final checkpoint.
 
 ## Train YOLOv8n-P2 on VisDrone
 

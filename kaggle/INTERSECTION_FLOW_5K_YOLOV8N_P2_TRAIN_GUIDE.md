@@ -25,6 +25,35 @@ tricycle
 obstacle
 ~~~
 
+Theo README chính thức, mọi ảnh có độ phân giải 1920x1080; object xa có thể chỉ 15x15 pixel, cảnh có mật độ cao và che khuất nặng. Repository chính thức minh họa train YOLOv8 với imgsz 640. Primary run trong guide này giữ imgsz 640 để bám baseline của tác giả, dễ tái lập và phù hợp với ràng buộc real-time. Kiến trúc P2 là phần cải tiến giúp giữ đặc trưng độ phân giải cao cho object nhỏ sau khi resize.
+
+## Cấu hình primary run được chọn
+
+Report tham khảo cho thấy YOLO với Mosaic, flip, HSV augmentation, warmup và cosine schedule là workflow phù hợp. Tuy nhiên các số mAP trong bảng report được ghi là minh họa, nên không dùng chúng như bằng chứng rằng một cấu hình đã tối ưu. Primary run dưới đây là cấu hình có cơ sở kỹ thuật cho YOLOv8n-P2, còn best.pt phải được chọn bằng mAP50-95 trên validation.
+
+~~~text
+Fine-tune toàn bộ network: không freeze layer
+Tối đa epochs:                200
+Early-stopping patience:       30
+Image size:                   640
+Batch T4 16 GB:                16
+Optimizer:                   AdamW
+Learning rate ban đầu:       0.001
+Learning-rate cuối:          lr0 x 0.01
+Scheduler:                   cosine
+Weight decay:                0.0005
+Warmup:                      3 epochs
+Mosaic:                      1.0, tắt ở 15 epoch cuối
+Horizontal flip:             0.5
+HSV hue/saturation/value:    0.015 / 0.7 / 0.4
+MixUp:                       0.0
+Seed:                        42
+~~~
+
+Lý do: imgsz 640 là baseline chính thức từ dataset; P2 là thay đổi kiến trúc có chủ đích để tăng độ nhạy với object nhỏ/xa mà không tăng input resolution. AdamW với lr 0.001 phù hợp cho transfer learning; Mosaic hỗ trợ cảnh đông, còn close_mosaic giúp model ổn định trên ảnh tự nhiên ở giai đoạn cuối. Không thêm Albumentations thủ công, vì augmentation chuẩn của Ultralytics đã đủ và tránh vô tình làm sai bounding box.
+
+imgsz 960 là một ablation có thể chạy sau này nếu cần chứng minh input resolution cao hơn giúp class nhỏ, nhưng không gọi nó là tốt hơn nếu chưa so sánh trên validation. Không dùng 960 cho primary run hiện tại.
+
 Cấu trúc dataset cần có:
 
 ~~~text
@@ -159,6 +188,8 @@ assert CLASS_NAMES == EXPECTED_CLASSES, (
     "Thứ tự/tên class khác dự kiến. Kiểm tra classes.txt trước khi train."
 )
 
+EXPECTED_IMAGE_COUNTS = {"train": 5483, "val": 722, "test": 723}
+
 for split in ("train", "val", "test"):
     images_dir = DATASET_ROOT / "images" / split
     labels_dir = DATASET_ROOT / "labels" / split
@@ -172,6 +203,10 @@ for split in ("train", "val", "test"):
     label_count = len(list(labels_dir.glob("*.txt")))
     print(f"{split:5s}: {image_count} images | {label_count} label files")
     assert image_count > 0, f"Split {split} không có ảnh"
+    assert image_count == EXPECTED_IMAGE_COUNTS[split], (
+        f"Split {split} cần có {EXPECTED_IMAGE_COUNTS[split]} ảnh theo README, "
+        f"nhưng hiện có {image_count}. Kiểm tra lại Kaggle Dataset."
+    )
 ~~~
 
 Trong ảnh cấu trúc dataset còn có thư mục annotations. Thư mục đó không dùng ở đây: Ultralytics train trực tiếp từ labels, vì labels đã là YOLO format.
@@ -243,6 +278,7 @@ intersection_yaml = {
     "train": "images/train",
     "val": "images/val",
     "test": "images/test",
+    "nc": len(CLASS_NAMES),
     "names": {index: name for index, name in enumerate(CLASS_NAMES)},
 }
 
@@ -252,6 +288,7 @@ with DATA_YAML.open("w", encoding="utf-8") as file:
 
 print(DATA_YAML.read_text())
 assert len(intersection_yaml["names"]) == 8
+assert intersection_yaml["nc"] == 8
 ~~~
 
 ## Cell 7 -- Kiểm tra YOLOv8n-P2 và pretrained transfer
@@ -278,11 +315,26 @@ Dry-run chưa train model. Nó chỉ xác nhận dataset, model name, output pat
   --dataset-name Intersection-Flow-5K \
   --data /kaggle/working/intersection_flow_5k.yaml \
   --model yolov8n-p2 \
-  --epochs 100 \
+  --epochs 200 \
   --imgsz 640 \
   --batch 16 \
   --workers 4 \
   --device 0 \
+  --optimizer AdamW \
+  --lr0 0.001 \
+  --lrf 0.01 \
+  --weight-decay 0.0005 \
+  --warmup-epochs 3 \
+  --cos-lr \
+  --patience 30 \
+  --mosaic 1.0 \
+  --close-mosaic 15 \
+  --fliplr 0.5 \
+  --hsv-h 0.015 \
+  --hsv-s 0.7 \
+  --hsv-v 0.4 \
+  --mixup 0.0 \
+  --seed 42 \
   --project /kaggle/working/experiments/intersection-flow-5k \
   --name yolov8n-p2 \
   --export-dir /kaggle/working/export \
@@ -301,20 +353,37 @@ export: /kaggle/working/export/Intersection-Flow-5K/yolov8n-p2
 
 Nếu sai path, dừng tại đây và sửa trước khi train.
 
-## Cell 9 -- Fine-tune 100 epochs
+## Cell 9 -- Fine-tune toàn bộ YOLOv8n-P2, tối đa 200 epochs
 
-Đây là cell train thật. Validation chạy sau mọi epoch, vì vậy W&B có train loss, val loss, Precision, Recall, mAP50 và mAP50-95 theo epoch.
+Đây là cell train thật. Không truyền freeze, nên toàn bộ backbone và P2 head đều được fine-tune. Validation chạy sau mọi epoch, vì vậy W&B có train loss, val loss, Precision, Recall, mAP50 và mAP50-95 theo epoch.
+
+imgsz 640 bám ví dụ train chính thức của Intersection-Flow-5K và giúp kết quả tái lập, đồng thời hợp với mục tiêu real-time. Batch 16 là điểm bắt đầu cho YOLOv8n-P2 trên T4 16 GB. Nếu thiếu VRAM, chỉ hạ batch trước; giữ imgsz 640 cho primary run.
 
 ~~~python
 !python kaggle/train.py \
   --dataset-name Intersection-Flow-5K \
   --data /kaggle/working/intersection_flow_5k.yaml \
   --model yolov8n-p2 \
-  --epochs 100 \
+  --epochs 200 \
   --imgsz 640 \
   --batch 16 \
   --workers 4 \
   --device 0 \
+  --optimizer AdamW \
+  --lr0 0.001 \
+  --lrf 0.01 \
+  --weight-decay 0.0005 \
+  --warmup-epochs 3 \
+  --cos-lr \
+  --patience 30 \
+  --mosaic 1.0 \
+  --close-mosaic 15 \
+  --fliplr 0.5 \
+  --hsv-h 0.015 \
+  --hsv-s 0.7 \
+  --hsv-v 0.4 \
+  --mixup 0.0 \
+  --seed 42 \
   --project /kaggle/working/experiments/intersection-flow-5k \
   --name yolov8n-p2 \
   --export-dir /kaggle/working/export
@@ -327,7 +396,8 @@ Nếu out-of-memory, đổi batch 16 thành batch 8 và chạy lại Cell 9 từ
 1. Có dòng model YAML nc 10 bị ghi đè thành nc 8. Đây không phải lỗi.
 2. Mỗi epoch có train loss và validation metric.
 3. W&B in URL run của project intersection-flow-5k-yolov8n-p2.
-4. Cuối train có checkpoint best.pt và last.pt được export.
+4. Early stopping có thể kết thúc trước epoch 200 nếu mAP validation không cải thiện trong 30 epoch; đây là hành vi đúng.
+5. Cuối train có checkpoint best.pt và last.pt được export.
 
 ## Cell 10 -- Kiểm tra checkpoint, kết quả và W&B
 
@@ -400,3 +470,10 @@ Trong project intersection-flow-5k-yolov8n-p2, kiểm tra:
 5. Epoch có mAP50-95 tốt nhất tương ứng checkpoint best.pt.
 
 Sau fine-tune, dùng best.pt để test trên split test đúng một lần. Tách test và ứng dụng tracking/counting sang notebook khác để báo cáo rõ train-val-test.
+
+## Ghi chú từ README chính thức
+
+- Dùng thư mục labels cho YOLO training; annotations là PASCAL VOC XML, còn test_coco.json chỉ hữu ích khi cần COCO evaluation.
+- Không chạy test trong lúc chọn epoch hoặc chỉnh hyperparameter. Train dùng train, chọn best.pt dựa trên val, sau đó test đúng một lần trên images/test.
+- Khi viết báo cáo, trích dẫn dataset: Zhao, Y. và Wang, Z., FlowDet: Overcoming Perspective and Scale Challenges in Real-Time End-to-End Traffic Detection, PRCV 2025.
+- Dataset có license CC BY-NC-SA 4.0; sử dụng trong phạm vi học tập/nghiên cứu phi thương mại là phù hợp, nhưng ghi rõ nguồn dataset trong báo cáo.
