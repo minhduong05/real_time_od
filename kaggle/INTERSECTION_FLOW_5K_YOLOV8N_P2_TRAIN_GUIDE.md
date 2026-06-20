@@ -36,7 +36,7 @@ Fine-tune toàn bộ network: không freeze layer
 Tối đa epochs:                200
 Early-stopping patience:       30
 Image size:                   640
-Batch T4 16 GB:                16
+Batch global, T4 x2:           32
 Optimizer:                   AdamW
 Learning rate ban đầu:       0.001
 Learning-rate cuối:          lr0 x 0.01
@@ -68,7 +68,7 @@ Intersection-Flow-5K/
 
 Tạo notebook mới, sau đó:
 
-1. Trong Settings -> Accelerator, chọn **GPU T4 x2**. Code chỉ dùng GPU đầu tiên, device 0.
+1. Trong Settings -> Accelerator, chọn **GPU T4 x2**. Primary run dùng cả hai GPU qua device 0,1.
 2. Bật Internet để clone repository, tải pretrained yolov8n.pt và gửi log W&B.
 3. Trong Add-ons -> Secrets, thêm WANDB_API_KEY rồi bật quyền truy cập secret cho notebook.
 4. Bấm Add Input và thêm Kaggle Dataset Intersection-Flow-5K.
@@ -117,18 +117,20 @@ import wandb
 print("PyTorch:", torch.__version__)
 print("Ultralytics:", ultralytics.__version__)
 print("CUDA available:", torch.cuda.is_available())
-print("GPU:", torch.cuda.get_device_name(0) if torch.cuda.is_available() else "NONE")
 
 assert torch.cuda.is_available(), "Hãy bật GPU T4 x2 trong Kaggle Settings."
-assert torch.cuda.get_device_capability(0) >= (7, 0), (
-    "GPU không tương thích PyTorch hiện tại. Chọn GPU T4 x2 thay cho P100."
-)
+assert torch.cuda.device_count() >= 2, "Cần chọn GPU T4 x2 trong Kaggle Settings."
 
-test_tensor = torch.zeros(1, device="cuda")
-print("CUDA tensor test:", test_tensor)
+for device_id in range(2):
+    print(f"GPU {device_id}:", torch.cuda.get_device_name(device_id))
+    assert torch.cuda.get_device_capability(device_id) >= (7, 0), (
+        "GPU không tương thích PyTorch hiện tại. Chọn GPU T4 x2 thay cho P100."
+    )
+    test_tensor = torch.zeros(1, device=f"cuda:{device_id}")
+    print(f"CUDA tensor test GPU {device_id}:", test_tensor)
 ~~~
 
-**Đúng khi:** CUDA available là True, GPU là Tesla T4 và tensor test chạy thành công.
+**Đúng khi:** CUDA available là True, có hai GPU Tesla T4 và tensor test chạy thành công trên GPU 0 lẫn GPU 1.
 
 ## Cell 4 -- Đăng nhập và cấu hình W&B
 
@@ -155,6 +157,8 @@ wandb.login(key=UserSecretsClient().get_secret("WANDB_API_KEY"))
 **Đúng khi:** W&B login thành công. Khi train bắt đầu, terminal sẽ in URL project và run.
 
 W&B sẽ lưu config của toàn bộ argument train, tags, history loss/metric/LR theo epoch, GPU system metrics và media do Ultralytics tạo.
+
+Khi device là 0,1, Ultralytics tự chạy DDP. W&B chỉ tạo một run chính từ rank 0, không tạo hai run trùng lặp.
 
 ## Cell 5 -- Tìm, kiểm tra dataset và class
 
@@ -321,9 +325,9 @@ Dry-run chưa train model. Nó chỉ xác nhận dataset, model name, output pat
   --model yolov8n-p2 \
   --epochs 200 \
   --imgsz 640 \
-  --batch 16 \
+  --batch 32 \
   --workers 4 \
-  --device 0 \
+  --device 0,1 \
   --optimizer AdamW \
   --lr0 0.001 \
   --lrf 0.01 \
@@ -362,7 +366,7 @@ Nếu sai path, dừng tại đây và sửa trước khi train.
 
 Đây là cell train thật. Không truyền freeze, nên toàn bộ backbone và P2 head đều được fine-tune. Validation chạy sau mọi epoch, vì vậy W&B có train loss, val loss, Precision, Recall, mAP50 và mAP50-95 theo epoch.
 
-imgsz 640 bám ví dụ train chính thức của Intersection-Flow-5K và giúp kết quả tái lập, đồng thời hợp với mục tiêu real-time. Batch 16 là điểm bắt đầu cho YOLOv8n-P2 trên T4 16 GB. Nếu thiếu VRAM, chỉ hạ batch trước; giữ imgsz 640 cho primary run.
+imgsz 640 bám ví dụ train chính thức của Intersection-Flow-5K và giúp kết quả tái lập, đồng thời hợp với mục tiêu real-time. Batch 32 là batch toàn cục cho hai T4, tương đương 16 ảnh mỗi GPU. Nếu thiếu VRAM, chỉ hạ batch toàn cục trước; giữ imgsz 640 cho primary run.
 
 ~~~python
 !python kaggle/train.py \
@@ -371,9 +375,9 @@ imgsz 640 bám ví dụ train chính thức của Intersection-Flow-5K và giúp
   --model yolov8n-p2 \
   --epochs 200 \
   --imgsz 640 \
-  --batch 16 \
+  --batch 32 \
   --workers 4 \
-  --device 0 \
+  --device 0,1 \
   --optimizer AdamW \
   --lr0 0.001 \
   --lrf 0.01 \
@@ -395,7 +399,7 @@ imgsz 640 bám ví dụ train chính thức của Intersection-Flow-5K và giúp
   --export-dir /kaggle/working/export
 ~~~
 
-Nếu out-of-memory, đổi batch 16 thành batch 8 và chạy lại Cell 9 từ đầu. Không đổi cấu hình giữa chừng.
+Nếu out-of-memory, đổi batch 32 thành batch 16 và chạy lại Cell 9 từ đầu. Không đổi cấu hình giữa chừng.
 
 **Đúng khi trong log:**
 
