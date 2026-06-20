@@ -70,6 +70,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--hsv-s", type=float, default=None, help="HSV saturation augmentation gain.")
     parser.add_argument("--hsv-v", type=float, default=None, help="HSV value augmentation gain.")
     parser.add_argument("--seed", type=int, default=None, help="Random seed for reproducibility.")
+    parser.add_argument(
+        "--save-period",
+        type=int,
+        default=None,
+        help="Save an intermediate checkpoint every N epochs; -1 saves only best and last.",
+    )
     parser.add_argument("--dry-run", action="store_true", help="Print resolved setup without training.")
     return parser.parse_args()
 
@@ -153,6 +159,7 @@ def main() -> None:
         "hsv_s": args.hsv_s,
         "hsv_v": args.hsv_v,
         "seed": args.seed,
+        "save_period": args.save_period,
     }
     train_overrides = {key: value for key, value in optional_train_args.items() if value is not None}
     if args.cos_lr:
@@ -168,6 +175,8 @@ def main() -> None:
         "project": str(project),
         "name": run_name,
         "exist_ok": True,
+        # Keep CSV/plots available locally and for the Ultralytics W&B callback.
+        "plots": True,
     }
     train_args.update(train_overrides)
 

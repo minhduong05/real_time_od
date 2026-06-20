@@ -141,16 +141,20 @@ from kaggle_secrets import UserSecretsClient
 WANDB_ENTITY = "minhmit146-hanoi-university-of-science-and-technology"
 WANDB_PROJECT = "intersection-flow-5k-yolov8n-p2"
 WANDB_RUN_NAME = "yolov8n-p2_intersection-flow-5k"
+WANDB_TAGS = "intersection-flow-5k,yolov8n-p2,traffic-monitoring,primary-run"
 
 os.environ["WANDB_ENTITY"] = WANDB_ENTITY
 os.environ["WANDB_PROJECT"] = WANDB_PROJECT
 os.environ["WANDB_NAME"] = WANDB_RUN_NAME
+os.environ["WANDB_TAGS"] = WANDB_TAGS
 
 wandb.login(key=UserSecretsClient().get_secret("WANDB_API_KEY"))
 !yolo settings wandb=True
 ~~~
 
 **Đúng khi:** W&B login thành công. Khi train bắt đầu, terminal sẽ in URL project và run.
+
+W&B sẽ lưu config của toàn bộ argument train, tags, history loss/metric/LR theo epoch, GPU system metrics và media do Ultralytics tạo.
 
 ## Cell 5 -- Tìm, kiểm tra dataset và class
 
@@ -335,6 +339,7 @@ Dry-run chưa train model. Nó chỉ xác nhận dataset, model name, output pat
   --hsv-v 0.4 \
   --mixup 0.0 \
   --seed 42 \
+  --save-period 25 \
   --project /kaggle/working/experiments/intersection-flow-5k \
   --name yolov8n-p2 \
   --export-dir /kaggle/working/export \
@@ -384,6 +389,7 @@ imgsz 640 bám ví dụ train chính thức của Intersection-Flow-5K và giúp
   --hsv-v 0.4 \
   --mixup 0.0 \
   --seed 42 \
+  --save-period 25 \
   --project /kaggle/working/experiments/intersection-flow-5k \
   --name yolov8n-p2 \
   --export-dir /kaggle/working/export
@@ -463,11 +469,14 @@ Sau Cell 11, bấm **Save Version**. Tải file:
 
 Trong project intersection-flow-5k-yolov8n-p2, kiểm tra:
 
-1. train box_loss, cls_loss và dfl_loss giảm dần.
-2. val loss không tăng kéo dài ở cuối train.
-3. Precision, Recall, mAP50, mAP50-95 được log theo epoch.
-4. PR curve, F1 curve, P curve, R curve và confusion matrix xuất hiện trong media/files.
-5. Epoch có mAP50-95 tốt nhất tương ứng checkpoint best.pt.
+Trong project intersection-flow-5k-yolov8n-p2, mở đúng run có tag primary-run và kiểm tra các nhóm sau:
+
+1. **Config**: dataset path, class names, model yolov8n-p2, epochs 200, imgsz 640, batch, AdamW, lr0, lrf, Mosaic, close_mosaic, seed và save_period 25 đều xuất hiện. Đây là bằng chứng tái lập thí nghiệm.
+2. **History theo epoch**: train box_loss, cls_loss, dfl_loss; val box_loss, cls_loss, dfl_loss; metrics Precision, Recall, mAP50 và mAP50-95. Train loss nên giảm, còn model tốt nhất được quyết định bởi validation mAP50-95.
+3. **Learning rate**: các panel lr/pg0, lr/pg1, lr/pg2 phải cho thấy warmup rồi giảm theo cosine schedule.
+4. **System**: GPU utilization, GPU memory, CPU/RAM, thời gian mỗi epoch. Các chỉ số này cần để phân tích trade-off accuracy và tài nguyên.
+5. **Media**: results.png, PR curve, F1 curve, Precision curve, Recall curve, confusion matrix, confusion matrix normalized, labels và ảnh train/val sample.
+6. **Files/checkpoints**: Kaggle output phải có results.csv, best.pt, last.pt và checkpoint mốc epoch 25/50/75... do save_period 25. best.pt phải tương ứng epoch có validation mAP50-95 tốt nhất. W&B thường hiển thị model artifact cuối; file ZIP ở Cell 11 là bản lưu chắc chắn để tải tất cả checkpoint về.
 
 Sau fine-tune, dùng best.pt để test trên split test đúng một lần. Tách test và ứng dụng tracking/counting sang notebook khác để báo cáo rõ train-val-test.
 
