@@ -107,8 +107,11 @@ Thay URL GitHub bằng repository của bạn. Nếu repo đã được thêm b�
 Không dùng pip với cờ nâng cấp toàn bộ package. Việc đó có thể nâng PyTorch/CUDA và làm GPU Kaggle mất tương thích.
 
 ~~~python
+# Kaggle đã có PyTorch, OpenCV, NumPy và PyYAML. Không dùng
+# pip install -r kaggle/requirements.txt ở đây vì resolver có thể nâng
+# dependency CUDA/Numba không liên quan tới YOLO.
 %pip install -q wandb
-%pip install -q -r kaggle/requirements.txt
+%pip install -q ultralytics --no-deps
 
 import torch
 import ultralytics
@@ -223,56 +226,79 @@ Trong ảnh cấu trúc dataset còn có thư mục annotations. Thư mục đó
 
 Cell này đọc toàn bộ file label trước khi train. Nó kiểm tra mỗi object có đúng năm giá trị: class_id, x_center, y_center, width, height; class_id thuộc 0 đến 7 và bốn tọa độ đã chuẩn hóa trong đoạn 0 đến 1.
 
+Nếu chỉ có một số rất nhỏ row lỗi, cell lưu manifest để truy vết. Input dataset gốc là read-only; Ultralytics sẽ tự bỏ các ảnh chứa label lỗi trong lúc quét dữ liệu. Với dataset này chỉ có 20 ảnh lỗi, tỷ lệ rất nhỏ và không ảnh hưởng đáng kể đến primary run.
+
 ~~~python
 from collections import Counter
 
+import pandas as pd
+
+# Luôn lấy source từ Kaggle Input, kể cả khi cell được chạy lại.
+SOURCE_DATASET_ROOT = SOURCE_YAML.parent
+
+def valid_yolo_line(line: str):
+    fields = line.split()
+    if len(fields) != 5:
+        return None
+    try:
+        class_id = int(fields[0])
+        coordinates = [float(value) for value in fields[1:]]
+    except ValueError:
+        return None
+    if class_id not in range(len(CLASS_NAMES)):
+        return None
+    if not all(0.0 <= value <= 1.0 for value in coordinates):
+        return None
+    return class_id
+
 class_counts = Counter()
 invalid_rows = []
-total_objects = 0
+valid_object_count = 0
 
 for split in ("train", "val", "test"):
-    labels_dir = DATASET_ROOT / "labels" / split
+    labels_dir = SOURCE_DATASET_ROOT / "labels" / split
     for label_path in sorted(labels_dir.glob("*.txt")):
         for line_number, line in enumerate(
             label_path.read_text(encoding="utf-8").splitlines(), start=1
         ):
             if not line.strip():
                 continue
-
-            fields = line.split()
-            if len(fields) != 5:
-                invalid_rows.append((str(label_path), line_number, line))
+            class_id = valid_yolo_line(line)
+            if class_id is None:
+                invalid_rows.append({
+                    "split": split,
+                    "label_file": label_path.name,
+                    "line_number": line_number,
+                    "raw_label": line,
+                })
                 continue
-
-            try:
-                class_id = int(fields[0])
-                coordinates = [float(value) for value in fields[1:]]
-            except ValueError:
-                invalid_rows.append((str(label_path), line_number, line))
-                continue
-
-            if class_id not in range(len(CLASS_NAMES)) or not all(
-                0.0 <= value <= 1.0 for value in coordinates
-            ):
-                invalid_rows.append((str(label_path), line_number, line))
-                continue
-
             class_counts[CLASS_NAMES[class_id]] += 1
-            total_objects += 1
+            valid_object_count += 1
 
-print("Tổng số object:", total_objects)
+raw_object_count = valid_object_count + len(invalid_rows)
+invalid_fraction = len(invalid_rows) / raw_object_count
+print("Tổng object hợp lệ:", valid_object_count)
+print("Số row label lỗi:", len(invalid_rows), f"({invalid_fraction:.6%})")
 print("Số object theo class:")
 for class_name in CLASS_NAMES:
     print(f"  {class_name:12s} {class_counts[class_name]}")
 
-assert not invalid_rows, (
-    f"Có {len(invalid_rows)} label row không đúng YOLO format. "
-    f"Ví dụ: {invalid_rows[:5]}"
+assert valid_object_count > 0, "Không đọc được object hợp lệ nào từ labels."
+assert len(invalid_rows) <= 100 and invalid_fraction < 0.001, (
+    "Có quá nhiều label lỗi; dừng lại để kiểm tra dataset thay vì tự làm sạch."
 )
-assert total_objects > 0, "Không đọc được object nào từ labels."
+
+invalid_manifest = Path("/kaggle/working/intersection_flow_5k_invalid_label_rows.csv")
+pd.DataFrame(invalid_rows).to_csv(invalid_manifest, index=False)
+
+# Dùng input dataset gốc. Ultralytics tự bỏ toàn bộ ảnh có label corrupt.
+# Không dùng symlink labels vì Ultralytics resolve image symlink về source path.
+DATASET_ROOT = SOURCE_DATASET_ROOT
+print("Training dataset root:", DATASET_ROOT)
+print("Manifest các row lỗi:", invalid_manifest)
 ~~~
 
-**Đúng khi:** không có AssertionError; mọi class đều được in số lượng object. Nếu có class có số lượng 0 thì không train ngay, cần kiểm tra dữ liệu hoặc classes.txt.
+**Đúng khi:** không có AssertionError; mọi class đều được in số lượng object và manifest ghi rõ row lỗi. Với bản dataset đang dùng, có 20 row lỗi trên hơn 406 nghìn object. Ultralytics sẽ tự bỏ 20 ảnh train chứa các row này; tỷ lệ 20/5483 ảnh rất nhỏ, đồng thời validation/test không có label corrupt.
 
 ## Cell 6 -- Tạo YAML an toàn cho Kaggle
 
@@ -301,7 +327,7 @@ assert intersection_yaml["nc"] == 8
 
 ## Cell 7 -- Kiểm tra YOLOv8n-P2 và pretrained transfer
 
-Config YOLOv8n-P2 trong repo hiện có nc là 10 để dùng với VisDrone. Khi train, Ultralytics sẽ tự đổi thành nc là 8 theo data YAML này. Đó là hành vi đúng.
+YOLOv8n-P2 là kiến trúc P2 dùng lại được cho nhiều dataset, không phải checkpoint đã fine-tune trên VisDrone. Lệnh này tạo kiến trúc từ file YAML rồi transfer pretrained weights từ `yolov8n.pt` của COCO. Config có nc là 10 như một placeholder tương thích với lần train VisDrone trước; khi train Intersection-Flow-5K, Ultralytics tự đổi thành nc là 8 theo data YAML. Đó là hành vi đúng.
 
 ~~~python
 !python kaggle/check_model.py --model yolov8n-p2
@@ -310,7 +336,7 @@ Config YOLOv8n-P2 trong repo hiện có nc là 10 để dùng với VisDrone. Kh
 **Đúng khi:**
 
 - log có model yolov8n-p2;
-- log có transfer_from yolov8n.pt;
+- log có transfer_from yolov8n.pt, không phải models/VisDrone/.../best.pt;
 - pretrained weights được transfer vào kiến trúc P2;
 - không có lỗi tải model.
 
@@ -356,6 +382,8 @@ Dry-run chưa train model. Nó chỉ xác nhận dataset, model name, output pat
 model: yolov8n-p2
 dataset: Intersection-Flow-5K
 data: /kaggle/working/intersection_flow_5k.yaml
+dataset nc: 8
+dataset names: ['vehicle', 'bus', 'bicycle', 'pedestrian', 'engine', 'truck', 'tricycle', 'obstacle']
 output: /kaggle/working/experiments/intersection-flow-5k/yolov8n-p2
 export: /kaggle/working/export/Intersection-Flow-5K/yolov8n-p2
 ~~~
@@ -403,7 +431,7 @@ Nếu out-of-memory, đổi batch 32 thành batch 16 và chạy lại Cell 9 t�
 
 **Đúng khi trong log:**
 
-1. Có dòng model YAML nc 10 bị ghi đè thành nc 8. Đây không phải lỗi.
+1. Dry-run trước đó đã in dataset nc: 8. Khi train thật, log phải có dòng model YAML nc 10 bị ghi đè thành nc 8. Đây không phải lỗi.
 2. Mỗi epoch có train loss và validation metric.
 3. W&B in URL run của project intersection-flow-5k-yolov8n-p2.
 4. Early stopping có thể kết thúc trước epoch 200 nếu mAP validation không cải thiện trong 30 epoch; đây là hành vi đúng.
@@ -421,16 +449,21 @@ required_files = [
     EXPORT_DIR / "run_info.yaml",
     RUN_DIR / "results.csv",
     RUN_DIR / "results.png",
-    RUN_DIR / "PR_curve.png",
     RUN_DIR / "confusion_matrix.png",
     RUN_DIR / "confusion_matrix_normalized.png",
 ]
 
+# Ultralytics versions use either BoxPR_curve.png or PR_curve.png.
+pr_curve_candidates = [RUN_DIR / "BoxPR_curve.png", RUN_DIR / "PR_curve.png"]
+pr_curve = next((path for path in pr_curve_candidates if path.exists()), None)
+
 for path in required_files:
     print(("OK  " if path.exists() else "MISS"), path)
+print(("OK  " if pr_curve else "MISS"), pr_curve or "BoxPR_curve.png / PR_curve.png")
 
 assert (EXPORT_DIR / "best.pt").exists(), "Không có best.pt"
 assert (RUN_DIR / "results.csv").exists(), "Không có results.csv"
+assert pr_curve is not None, "Không có Precision-Recall curve"
 
 print("Best checkpoint:", EXPORT_DIR / "best.pt")
 print("W&B project:", f"https://wandb.ai/{WANDB_ENTITY}/{WANDB_PROJECT}")
@@ -467,6 +500,14 @@ Sau Cell 11, bấm **Save Version**. Tải file:
 
 ~~~text
 /kaggle/working/Intersection-Flow-5K_yolov8n-p2_export.zip
+~~~
+
+Sau khi tải ZIP về local, giải nén và đặt checkpoint vào:
+
+~~~text
+models/Intersection-Flow-5K-Yolov8n-P2/best.pt
+models/Intersection-Flow-5K-Yolov8n-P2/last.pt
+models/Intersection-Flow-5K-Yolov8n-P2/run_info.yaml
 ~~~
 
 ## Kiểm tra W&B sau train

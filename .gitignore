@@ -1,3 +1,4 @@
+# Python
 __pycache__/
 *.py[cod]
 *.pyo
@@ -5,14 +6,32 @@ __pycache__/
 .ruff_cache/
 .mypy_cache/
 
+# Environment
 .env
 .venv/
 venv/
 
+# Training outputs
 runs/
 outputs/
 logs/
 
+# Videos
+video/
+*.mp4
+*.avi
+*.mov
+
+# Dataset
+datasets/
+VisDrone/
+Intersection-Flow-5K/
+
+# Kaggle
+kaggle/outputs/
+kaggle_weight/
+
+# Models
 models/**/*.pt
 models/**/*.onnx
 models/**/*.engine
@@ -20,6 +39,17 @@ models/**/*.torchscript
 !models/.gitkeep
 !models/**/.gitkeep
 
-kaggle/outputs/
-kaggle_weight/
+# Archives
 *.zip
+*.rar
+*.7z
+
+# Notebook
+.ipynb_checkpoints/
+
+# VSCode
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db

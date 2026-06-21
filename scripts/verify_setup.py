@@ -27,7 +27,9 @@ def main() -> None:
         print(f"  {dataset_name}: {model_dir}")
 
     print("Predict by passing the exact weight path, for example:")
-    print("  python app/run.py --weights models/VisDrone/yolov8n-p2/best.pt --source 0")
+    print("  python app/run.py --weights models/Intersection-Flow-5K-Yolov8n-P2/best.pt --source 0")
+    print("Export object detection for a local video, for example:")
+    print("  python app/export_detection.py --source path/to/video.mp4 --device 0")
 
 
 if __name__ == "__main__":

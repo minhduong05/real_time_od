@@ -98,6 +98,30 @@ def make_dataset_yaml(args: argparse.Namespace, config: dict[str, Any]) -> Path:
     return output
 
 
+def dataset_class_info(data_yaml: Path) -> tuple[int, list[str] | None]:
+    """Validate the dataset class count before Ultralytics starts training."""
+    data = read_yaml(data_yaml)
+    names = data.get("names")
+    declared_nc = data.get("nc")
+
+    if isinstance(names, dict):
+        class_names = [str(names[index]) for index in sorted(names)]
+    elif isinstance(names, list):
+        class_names = [str(name) for name in names]
+    else:
+        class_names = None
+
+    inferred_nc = len(class_names) if class_names is not None else declared_nc
+    if inferred_nc is None:
+        raise ValueError(f"{data_yaml} must define either 'names' or 'nc'.")
+    if declared_nc is not None and int(declared_nc) != int(inferred_nc):
+        raise ValueError(
+            f"{data_yaml} has nc={declared_nc}, but names contains {inferred_nc} classes."
+        )
+
+    return int(inferred_nc), class_names
+
+
 def build_model(model_name: str, config: dict[str, Any]):
     from ultralytics import YOLO
 
@@ -140,6 +164,7 @@ def main() -> None:
     args = parse_args()
 
     data_yaml = make_dataset_yaml(args, config)
+    dataset_nc, dataset_names = dataset_class_info(data_yaml)
     project = Path(args.project)
     export_dir = Path(args.export_dir)
     run_name = args.name or args.model
@@ -184,6 +209,9 @@ def main() -> None:
     print(f"  model: {args.model}")
     print(f"  dataset: {args.dataset_name}")
     print(f"  data: {data_yaml}")
+    print(f"  dataset nc: {dataset_nc}")
+    if dataset_names is not None:
+        print(f"  dataset names: {dataset_names}")
     print(f"  output: {project / run_name}")
     print(f"  export: {export_dir / args.dataset_name / args.model}")
     print(f"  args: {train_args}")

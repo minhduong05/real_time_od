@@ -3,22 +3,20 @@ project:
   task: detect
 
 classes:
-  - pedestrian
-  - people
+  - vehicle
+  - bus
   - bicycle
-  - car
-  - van
+  - pedestrian
+  - engine
   - truck
   - tricycle
-  - awning-tricycle
-  - bus
-  - motor
+  - obstacle
 
 datasets:
   VisDrone:
     model_dir: models/VisDrone
   Intersection-Flow-5K:
-    model_dir: models/Intersection-Flow-5K
+    model_dir: models/Intersection-Flow-5K-Yolov8n-P2
 
 models:
   definitions:

@@ -1,0 +1,7 @@
+model: yolov8n-p2
+dataset: Intersection-Flow-5K
+data: /kaggle/working/intersection_flow_5k.yaml
+project: /kaggle/working/experiments/intersection-flow-5k
+run: yolov8n-p2
+best: /kaggle/working/export/Intersection-Flow-5K/yolov8n-p2/best.pt
+last: /kaggle/working/export/Intersection-Flow-5K/yolov8n-p2/last.pt
