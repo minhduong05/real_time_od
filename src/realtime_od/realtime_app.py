@@ -19,8 +19,8 @@ from realtime_od.types import Detection
 
 
 VIDEO_EXTENSIONS = {".mp4", ".avi", ".mov", ".mkv", ".webm"}
-MODEL_WEIGHTS = "models/Intersection-Flow-5K-Yolov8n-P2/best.pt"
-VEHICLE_CLASSES = {"vehicle", "bus", "bicycle", "engine", "truck", "tricycle"}
+MODEL_WEIGHTS = "models/Top-View-Vehicle-Detection-Yolov8n-P2/best.pt"
+VEHICLE_CLASSES = {"Vehicle", "vehicle"}
 
 
 INDEX_HTML = r"""
@@ -307,13 +307,21 @@ function drawPolygon(zone, color, label) {
 function drawLine(line, color, label) {
   const a = scaleFromVideo(line.p1);
   const b = scaleFromVideo(line.p2);
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
   ctx.strokeStyle = color;
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 4;
   ctx.beginPath();
   ctx.moveTo(a.x, a.y);
   ctx.lineTo(b.x, b.y);
   ctx.stroke();
   ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(a.x, a.y, 5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(b.x, b.y, 5, 0, Math.PI * 2);
+  ctx.fill();
   ctx.font = "14px Segoe UI";
   ctx.fillText(label, a.x + 6, a.y - 8);
 }
@@ -778,7 +786,12 @@ def update_and_draw_counting(
 ) -> None:
     p1 = (int(line["p1"]["x"]), int(line["p1"]["y"]))
     p2 = (int(line["p2"]["x"]), int(line["p2"]["y"]))
-    cv2.line(frame, p1, p2, (0, 220, 255), 3)
+    cv2.line(frame, p1, p2, (0, 0, 0), 7, lineType=cv2.LINE_AA)
+    cv2.line(frame, p1, p2, (0, 220, 255), 4, lineType=cv2.LINE_AA)
+    cv2.circle(frame, p1, 7, (0, 0, 0), -1, lineType=cv2.LINE_AA)
+    cv2.circle(frame, p2, 7, (0, 0, 0), -1, lineType=cv2.LINE_AA)
+    cv2.circle(frame, p1, 5, (0, 220, 255), -1, lineType=cv2.LINE_AA)
+    cv2.circle(frame, p2, 5, (0, 220, 255), -1, lineType=cv2.LINE_AA)
 
     for detection in detections:
         if detection.track_id < 0:

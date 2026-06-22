@@ -2,18 +2,35 @@
 
 This folder is for Kaggle only. Use it to train, tune, and export checkpoints.
 
-For the full VisDrone + W&B notebook workflows, see:
+For the current Top-View Vehicle + W&B notebook workflow, see:
+
+```text
+kaggle/TOP_VIEW_VEHICLE_YOLOV8N_P2_TRAIN_GUIDE.md
+```
+
+Legacy VisDrone workflows are still kept for reference:
 
 ```text
 kaggle/VISDRONE_RUN_GUIDE.md
 kaggle/VISDRONE_TEST_BENCHMARK_GUIDE.md
-kaggle/INTERSECTION_FLOW_5K_YOLOV8N_P2_TRAIN_GUIDE.md
 ```
 
-The Intersection-Flow-5K guide is the primary workflow for the traffic
+The Top-View Vehicle guide is the primary workflow for the highway traffic
 monitoring application. It trains the project YOLOv8n-P2 architecture with
-transfer learning, logs train/validation to a dedicated W&B project, and
-exports the final checkpoint.
+transfer learning, logs train/validation to W&B, and exports the final checkpoint.
+
+## Train YOLOv8n-P2 on Top-View Vehicle Detection
+
+```bash
+python kaggle/train.py \
+  --dataset-name Top-View-Vehicle-Detection \
+  --data /kaggle/working/top_view_vehicle.yaml \
+  --model yolov8n-p2 \
+  --epochs 100 \
+  --imgsz 640 \
+  --batch 32 \
+  --device 0
+```
 
 ## Train YOLOv8n-P2 on VisDrone
 

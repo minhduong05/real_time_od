@@ -84,7 +84,7 @@ def make_dataset_yaml(args: argparse.Namespace, config: dict[str, Any]) -> Path:
     if not args.dataset_root:
         return Path(args.data)
 
-    output = Path("/kaggle/working/generated_visdrone.yaml")
+    output = Path("/kaggle/working/generated_dataset.yaml")
     data = {
         "path": str(Path(args.dataset_root)),
         "train": args.train_split,

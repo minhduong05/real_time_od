@@ -47,7 +47,7 @@ def parse_args() -> argparse.Namespace:
     inference = config["inference"]
 
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--weights", default="models/Intersection-Flow-5K-Yolov8n-P2/best.pt")
+    parser.add_argument("--weights", default="models/Top-View-Vehicle-Detection-Yolov8n-P2/best.pt")
     parser.add_argument("--source", required=True)
     parser.add_argument("--output-root", default="outputs/detection")
     parser.add_argument("--output-dir")

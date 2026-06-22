@@ -4,6 +4,12 @@ Guide này dùng để xuất kết quả **Object Detection only** cho video lo
 
 Tracking, counting line và density realtime được xử lý trong HTTP frontend, không chạy trong batch export này.
 
+Checkpoint mặc định:
+
+```text
+models/Top-View-Vehicle-Detection-Yolov8n-P2/best.pt
+```
+
 ## Chạy một video
 
 ```powershell

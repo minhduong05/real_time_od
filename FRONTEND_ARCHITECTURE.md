@@ -18,7 +18,7 @@ app/realtime_front.py
   -> src/realtime_od/realtime_app.py
       -> src/realtime_od/config.py
       -> src/realtime_od/types.py
-      -> models/Intersection-Flow-5K-Yolov8n-P2/best.pt
+      -> models/Top-View-Vehicle-Detection-Yolov8n-P2/best.pt
       -> video/*.mp4
 ```
 
@@ -92,7 +92,7 @@ Mục đích:
 
 ```text
 resolve đường dẫn video/model tương đối từ root project
-tìm models/Intersection-Flow-5K-Yolov8n-P2/best.pt
+tìm models/Top-View-Vehicle-Detection-Yolov8n-P2/best.pt
 tìm video/*.mp4
 ```
 

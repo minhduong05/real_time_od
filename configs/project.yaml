@@ -3,20 +3,13 @@ project:
   task: detect
 
 classes:
-  - vehicle
-  - bus
-  - bicycle
-  - pedestrian
-  - engine
-  - truck
-  - tricycle
-  - obstacle
+  - Vehicle
 
 datasets:
   VisDrone:
     model_dir: models/VisDrone
-  Intersection-Flow-5K:
-    model_dir: models/Intersection-Flow-5K-Yolov8n-P2
+  Top-View-Vehicle-Detection:
+    model_dir: models/Top-View-Vehicle-Detection-Yolov8n-P2
 
 models:
   definitions:
@@ -39,8 +32,8 @@ inference:
   device:
 
 kaggle:
-  data: /kaggle/working/visdrone.yaml
-  dataset_name: VisDrone
+  data: /kaggle/working/top_view_vehicle.yaml
+  dataset_name: Top-View-Vehicle-Detection
   project: /kaggle/working/runs
   export_dir: /kaggle/working/export
   train:
