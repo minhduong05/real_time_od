@@ -14,7 +14,6 @@ from ultralytics import YOLO
 
 from realtime_od.config import resolve_project_path
 from realtime_od.types import Detection
-from realtime_od.video import normalize_source
 
 
 CSV_COLUMNS = [
@@ -30,6 +29,10 @@ CSV_COLUMNS = [
     "center_x",
     "center_y",
 ]
+
+
+def normalize_source(source: str) -> int | str:
+    return int(source) if source.isdigit() else source
 
 
 @dataclass(frozen=True)

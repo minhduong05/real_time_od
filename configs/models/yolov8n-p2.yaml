@@ -1,7 +1,7 @@
 # Generic YOLOv8n-P2 architecture for small-object detection.
 # It keeps YOLOv8 nano scaling and adds a P2 detection branch.
-# The nc value is a compatibility placeholder; Ultralytics overrides it from
-# the dataset YAML at training time, e.g. 1 for Top-View Vehicle Detection.
+# The nc value matches VisDrone's 10 classes; Ultralytics can still override it
+# from the dataset YAML during training.
 
 nc: 10
 scale: n

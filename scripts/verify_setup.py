@@ -12,6 +12,7 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from realtime_od.config import read_config, resolve_project_path
+from realtime_od.model_registry import MODEL_REGISTRY
 
 
 def main() -> None:
@@ -26,10 +27,15 @@ def main() -> None:
         model_dir = resolve_project_path(dataset_config["model_dir"])
         print(f"  {dataset_name}: {model_dir}")
 
-    print("Predict by passing the exact weight path, for example:")
-    print("  python app/run.py --weights models/Top-View-Vehicle-Detection-Yolov8n-P2/best.pt --source 0")
+    print("VisDrone checkpoints:")
+    for model in MODEL_REGISTRY.values():
+        weights = resolve_project_path(model.weights)
+        print(f"  {model.label}: {weights} ({'ok' if weights.exists() else 'missing'})")
+
+    print("Run realtime frontend:")
+    print("  python app/realtime_front.py")
     print("Export object detection for a local video, for example:")
-    print("  python app/export_detection.py --source path/to/video.mp4 --device 0")
+    print("  python app/detection.py --source path/to/video.mp4 --model yolov8n-p2 --device 0")
 
 
 if __name__ == "__main__":

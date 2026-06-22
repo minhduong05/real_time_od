@@ -3,13 +3,20 @@ project:
   task: detect
 
 classes:
-  - Vehicle
+  - pedestrian
+  - people
+  - bicycle
+  - car
+  - van
+  - truck
+  - tricycle
+  - awning-tricycle
+  - bus
+  - motor
 
 datasets:
   VisDrone:
     model_dir: models/VisDrone
-  Top-View-Vehicle-Detection:
-    model_dir: models/Top-View-Vehicle-Detection-Yolov8n-P2
 
 models:
   definitions:
@@ -32,8 +39,8 @@ inference:
   device:
 
 kaggle:
-  data: /kaggle/working/top_view_vehicle.yaml
-  dataset_name: Top-View-Vehicle-Detection
+  data: /kaggle/working/visdrone_fixed.yaml
+  dataset_name: VisDrone
   project: /kaggle/working/runs
   export_dir: /kaggle/working/export
   train:

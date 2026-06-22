@@ -69,6 +69,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--hsv-h", type=float, default=None, help="HSV hue augmentation gain.")
     parser.add_argument("--hsv-s", type=float, default=None, help="HSV saturation augmentation gain.")
     parser.add_argument("--hsv-v", type=float, default=None, help="HSV value augmentation gain.")
+    parser.add_argument("--dropout", type=float, default=None, help="Dropout probability for supported models.")
     parser.add_argument("--seed", type=int, default=None, help="Random seed for reproducibility.")
     parser.add_argument(
         "--save-period",
@@ -183,6 +184,7 @@ def main() -> None:
         "hsv_h": args.hsv_h,
         "hsv_s": args.hsv_s,
         "hsv_v": args.hsv_v,
+        "dropout": args.dropout,
         "seed": args.seed,
         "save_period": args.save_period,
     }
