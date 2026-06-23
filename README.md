@@ -1,6 +1,5 @@
-# Real-Time Object Detection With VisDrone YOLOv8
+# Project 2: Real-Time Object Detection With VisDrone YOLOv8
 
-**Project 2:** Real-Time Object Detection With VisDrone YOLOv8  
 **Người thực hiện:** Trần Tuấn Minh - 20230051
 
 Repository này được xây dựng cho bài toán phát hiện đối tượng giao thông từ video, tập trung vào huấn luyện, đánh giá và triển khai thử nghiệm các mô hình YOLOv8 đã fine-tune trên bộ dữ liệu VisDrone.
