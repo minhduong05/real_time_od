@@ -1,9 +1,8 @@
-# Real-Time Object Detection on VisDrone with YOLOv8
+# Project 2: Real-Time Object Detection With VisDrone YOLOv8 (YOLOv8n, YOLOv8n-P2, YOLOv8s)
+
+**Author:** Tran Tuan Minh - 20230051
 
 This repository studies and deploys YOLOv8-based object detectors for traffic-scene object detection on the VisDrone dataset. It combines a reproducible fine-tuning workflow, W&B experiment tracking, quantitative benchmarking, and a local real-time web application for video inference, tracking, density visualization, and vehicle counting.
-
-**Project 2**  
-**Author:** Tran Tuan Minh - 20230051
 
 ## Abstract
 
