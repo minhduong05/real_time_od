@@ -1,8 +1,8 @@
 # Project 2: Real-Time Object Detection With VisDrone YOLOv8 (YOLOv8n, YOLOv8n-P2, YOLOv8s)
 
-**Author:** Tran Tuan Minh - 20230051
+**Summarized, analyzed, and implemented by:** Tran Tuan Minh - 20230051
 
-This repository studies and deploys YOLOv8-based object detectors for traffic-scene object detection on the VisDrone dataset. It combines a reproducible fine-tuning workflow, W&B experiment tracking, quantitative benchmarking, and a local real-time web application for video inference, tracking, density visualization, and vehicle counting.
+This repository studies and deploys YOLOv8-based object detectors for traffic-scene object detection on the VisDrone dataset. The training and inference workflows are built on the Ultralytics YOLO framework and combine reproducible fine-tuning, W&B experiment tracking, quantitative benchmarking, and a local real-time web application for video inference, tracking, density visualization, and vehicle counting.
 
 ## Abstract
 
@@ -10,29 +10,29 @@ Small traffic objects in UAV and surveillance-like scenes are difficult for real
 
 | Model | Purpose |
 | --- | --- |
-| `yolov8n` | Lightweight YOLOv8 nano baseline |
-| `yolov8n-p2` | Custom nano-scale model with an added P2 detection branch for smaller objects |
-| `yolov8s` | Larger YOLOv8 small model for stronger accuracy |
+| `YOLOv8n` | Lightweight YOLOv8 nano baseline |
+| `YOLOv8n-P2` | Research model: nano-scale YOLOv8 with an added P2 detection branch for smaller objects |
+| `YOLOv8s` | Larger YOLOv8 small model used as a stronger accuracy reference |
 
 The final system packages the trained checkpoints into a Flask-based local application that supports real-time visualization and offline export for report-quality analysis.
 
 ## Key Contributions
 
 - Fine-tuned three YOLOv8 detector variants on VisDrone with W&B experiment tracking.
-- Implemented a custom `yolov8n-p2` architecture by adding a P2 detection branch for small-object detection.
+- Implemented a custom `YOLOv8n-P2` architecture by adding a P2 detection branch for small-object detection.
 - Benchmarked validation and test-dev performance with mAP, precision, recall, per-class AP, and runtime metrics.
 - Built a local real-time web application for video detection, ByteTrack-based tracking, density zones, vehicle counting, CSV logging, and annotated video export.
 - Curated reproducible experiment summaries and visual panels under `experiments/` for analysis and reporting.
 
 ## Dataset
 
-The experiments use the VisDrone detection classes:
+The experiments use the VisDrone object detection dataset, a UAV/aerial-view benchmark that contains dense traffic scenes with many small and occluded objects. The detection task uses the following 10 VisDrone classes:
 
 ```text
 pedestrian, people, bicycle, car, van, truck, tricycle, awning-tricycle, bus, motor
 ```
 
-Training and validation are performed through the Kaggle workflow in `kaggle/`. Final test benchmarking is logged to W&B project `test_log` and summarized in `experiments/summary/`.
+Training and validation are performed through the Kaggle workflow in `kaggle/` using Ultralytics YOLO training utilities. Final test benchmarking is logged to W&B project `test_log` and summarized in `experiments/summary/`.
 
 ## Methodology
 
@@ -40,14 +40,20 @@ The experimental pipeline is:
 
 ```text
 VisDrone data
-  -> YOLOv8 fine-tuning on Kaggle
+  -> Ultralytics YOLOv8 fine-tuning on Kaggle
   -> W&B logging for training, validation, and test-dev metrics
   -> local checkpoint placement under models/VisDrone/
   -> real-time Flask application and batch video export
   -> curated CSV/PNG summaries for reporting
 ```
 
-The custom `yolov8n-p2` model is defined in `configs/models/yolov8n-p2.yaml`. It keeps nano-scale YOLOv8 settings and adds an extra P2-scale detection output to improve sensitivity to small objects.
+The custom `YOLOv8n-P2` model is defined in `configs/models/yolov8n-p2.yaml` and follows the Ultralytics model-definition style. It keeps nano-scale YOLOv8 settings and adds an extra P2-scale detection output to improve sensitivity to small objects.
+
+## Research Focus: YOLOv8n-P2
+
+The central research direction of this project is `YOLOv8n-P2`, not simply the largest model. `YOLOv8s` is included as a stronger reference model, while `YOLOv8n` is the lightweight baseline. The important question is whether adding a P2 detection branch to a nano-scale detector improves small-object detection while keeping the model much lighter than `YOLOv8s`.
+
+In the result tables, bold values in the `YOLOv8n-P2` row mark metrics that improve over the `YOLOv8n` baseline.
 
 ## Results
 
@@ -55,9 +61,11 @@ The custom `yolov8n-p2` model is defined in `configs/models/yolov8n-p2.yaml`. It
 
 | Model | Precision | Recall | mAP50 | mAP50-95 | Params | GFLOPs |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| `yolov8n` | 0.4566 | 0.3486 | 0.3259 | 0.1829 | 3.01M | 8.204 |
-| `yolov8n-p2` | 0.4611 | 0.3695 | 0.3452 | 0.1974 | 2.93M | 12.378 |
-| `yolov8s` | **0.5368** | **0.4006** | **0.3934** | **0.2288** | 11.14M | 28.666 |
+| `YOLOv8n` | 0.4566 | 0.3486 | 0.3259 | 0.1829 | 3.01M | 8.204 |
+| `YOLOv8n-P2` | **0.4611** | **0.3695** | **0.3452** | **0.1974** | **2.93M** | 12.378 |
+| `YOLOv8s` | 0.5368 | 0.4006 | 0.3934 | 0.2288 | 11.14M | 28.666 |
+
+Compared with `YOLOv8n`, `YOLOv8n-P2` improves validation mAP50 from 0.3259 to **0.3452** and mAP50-95 from 0.1829 to **0.1974**, while using slightly fewer parameters. This supports the P2-branch hypothesis for improving a nano-scale detector on small-object-heavy VisDrone scenes.
 
 ![Fine-tuning mAP50 curves](experiments/figures/wandb_fine_tuning_map50.png)
 
@@ -65,11 +73,11 @@ The custom `yolov8n-p2` model is defined in `configs/models/yolov8n-p2.yaml`. It
 
 | Model | Precision | Recall | mAP50 | mAP50-95 | Total ms/image | Approx. FPS |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| `yolov8n` | 0.4007 | 0.3092 | 0.2709 | 0.1506 | **6.734** | **148.50** |
-| `yolov8n-p2` | 0.4074 | 0.3276 | 0.2855 | 0.1594 | 8.931 | 111.97 |
-| `yolov8s` | **0.4506** | **0.3538** | **0.3202** | **0.1828** | 9.599 | 104.18 |
+| `YOLOv8n` | 0.4007 | 0.3092 | 0.2709 | 0.1506 | 6.734 | 148.50 |
+| `YOLOv8n-P2` | **0.4074** | **0.3276** | **0.2855** | **0.1594** | 8.931 | 111.97 |
+| `YOLOv8s` | 0.4506 | 0.3538 | 0.3202 | 0.1828 | 9.599 | 104.18 |
 
-`yolov8s` obtains the strongest detection accuracy on both validation and test-dev. `yolov8n` is the fastest model, while `yolov8n-p2` provides a moderate accuracy improvement over `yolov8n` with extra compute from the P2 detection branch.
+On test-dev, `YOLOv8n-P2` again improves over `YOLOv8n`: mAP50 increases from 0.2709 to **0.2855**, mAP50-95 increases from 0.1506 to **0.1594**, and recall increases from 0.3092 to **0.3276**. `YOLOv8s` still obtains the strongest absolute accuracy, but it has almost 3.8x more parameters than `YOLOv8n-P2`; therefore, `YOLOv8n-P2` is the main lightweight research trade-off studied in this repository.
 
 ![Test plots overview](experiments/figures/wandb_test_plots_overview.png)
 
@@ -83,11 +91,11 @@ The following panel compares predictions from the three final models on the same
 
 | Model | Val mAP50 | Test mAP50 | Gap | Val mAP50-95 | Test mAP50-95 | Gap |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| `yolov8n` | 0.3259 | 0.2709 | 0.0550 | 0.1829 | 0.1506 | 0.0322 |
-| `yolov8n-p2` | 0.3452 | 0.2855 | 0.0597 | 0.1974 | 0.1594 | 0.0380 |
-| `yolov8s` | 0.3934 | 0.3202 | 0.0732 | 0.2288 | 0.1828 | 0.0460 |
+| `YOLOv8n` | 0.3259 | 0.2709 | 0.0550 | 0.1829 | 0.1506 | 0.0322 |
+| `YOLOv8n-P2` | **0.3452** | **0.2855** | 0.0597 | **0.1974** | **0.1594** | 0.0380 |
+| `YOLOv8s` | 0.3934 | 0.3202 | 0.0732 | 0.2288 | 0.1828 | 0.0460 |
 
-The larger `yolov8s` model achieves the best absolute accuracy, but it also shows a larger validation-to-test gap. This is expected when capacity increases on a difficult small-object dataset and should be considered when choosing a deployment model.
+The larger `YOLOv8s` model achieves the best absolute accuracy, but it also shows a larger validation-to-test gap. `YOLOv8n-P2` keeps the model in the nano-scale family while consistently improving the main detection metrics over `YOLOv8n`, which makes it the most relevant architecture for the project's small-object detection study.
 
 ## Repository Layout
 
@@ -215,8 +223,19 @@ The full raw W&B export is intentionally kept local and ignored by Git because i
 ```text
 experiments/summary/*.csv
 experiments/figures/*.png
-experiments/comparison_panels/**/*.png
 ```
+
+Manually downloaded W&B report panels can be stored locally under `experiments/comparison_panels/` while preparing a written report, but they are not required for reproducing the core README results.
+
+## References
+
+This project was implemented and written with reference to the following datasets, software, and local reading materials:
+
+- VisDrone detection dataset and benchmark materials, used as the target dataset for UAV/aerial-view object detection experiments.
+- Ultralytics YOLO framework, used for YOLOv8 model definitions, fine-tuning, validation, inference, and tracking utilities. The local reference source snapshot, when available, is `ultralytics-main/`; the upstream project is https://github.com/ultralytics/ultralytics.
+- Ultralytics citation metadata from `ultralytics-main/CITATION.cff`, including Jocher, Qiu, Chaurasia, and the Ultralytics contributors for the YOLO software framework.
+- Local reference paper consulted during the project: `make-05-00083-v2.pdf`.
+- Project-local documentation in `docs/`, especially the VisDrone fine-tuning, benchmarking, W&B export, and frontend implementation guides.
 
 ## Notes and Limitations
 
