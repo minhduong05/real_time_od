@@ -1,4 +1,4 @@
-# Project 2: Real-Time Object Detection With VisDrone YOLOv8
+# Project 2: Real-Time Object Detection With VisDrone YOLOv8 (YOLOv8n, YOLOv8-P2, YOLOv8s)
 
 **Người thực hiện:** Trần Tuấn Minh - 20230051
 
