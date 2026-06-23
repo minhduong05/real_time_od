@@ -1,73 +1,134 @@
-# Real-Time Object Detection With VisDrone YOLOv8
+# Real-Time Object Detection on VisDrone with YOLOv8
 
-**Project 2:** Real-Time Object Detection With VisDrone YOLOv8  
-**Người thực hiện:** Trần Tuấn Minh - 20230051
+This repository studies and deploys YOLOv8-based object detectors for traffic-scene object detection on the VisDrone dataset. It combines a reproducible fine-tuning workflow, W&B experiment tracking, quantitative benchmarking, and a local real-time web application for video inference, tracking, density visualization, and vehicle counting.
 
-Repository này được xây dựng cho bài toán phát hiện đối tượng giao thông từ video, tập trung vào huấn luyện, đánh giá và triển khai thử nghiệm các mô hình YOLOv8 đã fine-tune trên bộ dữ liệu VisDrone.
+**Project 2**  
+**Author:** Tran Tuan Minh - 20230051
 
-Các mục tiêu chính:
+## Abstract
 
-1. Fine-tune và benchmark ba kiến trúc YOLOv8 trên bộ dữ liệu VisDrone.
-2. Xây dựng giao diện realtime để trực quan hóa kết quả phát hiện, tracking, ước lượng mật độ và đếm phương tiện trên video local.
-3. Xuất kết quả suy luận dạng annotated video, CSV và summary JSON nhằm phục vụ phân tích định lượng, đối chiếu thực nghiệm và tổng hợp kết quả.
+Small traffic objects in UAV and surveillance-like scenes are difficult for real-time detectors because of scale variation, occlusion, class imbalance, and dense object layouts. This project fine-tunes and evaluates three YOLOv8 variants on the 10-class VisDrone detection task:
 
-Project hiện chỉ tập trung vào 3 checkpoint VisDrone:
+| Model | Purpose |
+| --- | --- |
+| `yolov8n` | Lightweight YOLOv8 nano baseline |
+| `yolov8n-p2` | Custom nano-scale model with an added P2 detection branch for smaller objects |
+| `yolov8s` | Larger YOLOv8 small model for stronger accuracy |
 
-```text
-models/VisDrone/yolov8n/best.pt
-models/VisDrone/yolov8n-p2/best.pt
-models/VisDrone/yolov8s/best.pt
-```
+The final system packages the trained checkpoints into a Flask-based local application that supports real-time visualization and offline export for report-quality analysis.
 
-Các class VisDrone:
+## Key Contributions
+
+- Fine-tuned three YOLOv8 detector variants on VisDrone with W&B experiment tracking.
+- Implemented a custom `yolov8n-p2` architecture by adding a P2 detection branch for small-object detection.
+- Benchmarked validation and test-dev performance with mAP, precision, recall, per-class AP, and runtime metrics.
+- Built a local real-time web application for video detection, ByteTrack-based tracking, density zones, vehicle counting, CSV logging, and annotated video export.
+- Curated reproducible experiment summaries and visual panels under `experiments/` for analysis and reporting.
+
+## Dataset
+
+The experiments use the VisDrone detection classes:
 
 ```text
 pedestrian, people, bicycle, car, van, truck, tricycle, awning-tricycle, bus, motor
 ```
 
-## Cấu Trúc Repo
+Training and validation are performed through the Kaggle workflow in `kaggle/`. Final test benchmarking is logged to W&B project `test_log` and summarized in `experiments/summary/`.
+
+## Methodology
+
+The experimental pipeline is:
+
+```text
+VisDrone data
+  -> YOLOv8 fine-tuning on Kaggle
+  -> W&B logging for training, validation, and test-dev metrics
+  -> local checkpoint placement under models/VisDrone/
+  -> real-time Flask application and batch video export
+  -> curated CSV/PNG summaries for reporting
+```
+
+The custom `yolov8n-p2` model is defined in `configs/models/yolov8n-p2.yaml`. It keeps nano-scale YOLOv8 settings and adds an extra P2-scale detection output to improve sensitivity to small objects.
+
+## Results
+
+### Fine-Tuning Validation Results
+
+| Model | Precision | Recall | mAP50 | mAP50-95 | Params | GFLOPs |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `yolov8n` | 0.4566 | 0.3486 | 0.3259 | 0.1829 | 3.01M | 8.204 |
+| `yolov8n-p2` | 0.4611 | 0.3695 | 0.3452 | 0.1974 | 2.93M | 12.378 |
+| `yolov8s` | **0.5368** | **0.4006** | **0.3934** | **0.2288** | 11.14M | 28.666 |
+
+![Fine-tuning mAP50 curves](experiments/figures/wandb_fine_tuning_map50.png)
+
+### Test-Dev Benchmark
+
+| Model | Precision | Recall | mAP50 | mAP50-95 | Total ms/image | Approx. FPS |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `yolov8n` | 0.4007 | 0.3092 | 0.2709 | 0.1506 | **6.734** | **148.50** |
+| `yolov8n-p2` | 0.4074 | 0.3276 | 0.2855 | 0.1594 | 8.931 | 111.97 |
+| `yolov8s` | **0.4506** | **0.3538** | **0.3202** | **0.1828** | 9.599 | 104.18 |
+
+`yolov8s` obtains the strongest detection accuracy on both validation and test-dev. `yolov8n` is the fastest model, while `yolov8n-p2` provides a moderate accuracy improvement over `yolov8n` with extra compute from the P2 detection branch.
+
+![Test plots overview](experiments/figures/wandb_test_plots_overview.png)
+
+### Qualitative Comparison
+
+The following panel compares predictions from the three final models on the same test image.
+
+![Test sample predictions](experiments/figures/wandb_test_sample_predictions.png)
+
+### Generalization Gap
+
+| Model | Val mAP50 | Test mAP50 | Gap | Val mAP50-95 | Test mAP50-95 | Gap |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `yolov8n` | 0.3259 | 0.2709 | 0.0550 | 0.1829 | 0.1506 | 0.0322 |
+| `yolov8n-p2` | 0.3452 | 0.2855 | 0.0597 | 0.1974 | 0.1594 | 0.0380 |
+| `yolov8s` | 0.3934 | 0.3202 | 0.0732 | 0.2288 | 0.1828 | 0.0460 |
+
+The larger `yolov8s` model achieves the best absolute accuracy, but it also shows a larger validation-to-test gap. This is expected when capacity increases on a difficult small-object dataset and should be considered when choosing a deployment model.
+
+## Repository Layout
 
 ```text
 app/
-  realtime_front.py          Entry point chạy frontend realtime local
-  detection.py               CLI export object-detection-only cho video/folder
+  realtime_front.py          Local Flask entry point
+  detection.py               Batch object-detection export CLI
 
 src/realtime_od/
-  realtime_app.py            Flask routes/API cho frontend
-  realtime_template.py       HTML/CSS/JS giao diện realtime
-  realtime_state.py          Runtime config, pause/resume/finish state, cache YOLO model
-  realtime_stream.py         Đọc video, chạy YOLO predict/track, stream MJPEG
-  realtime_draw.py           Vẽ bbox, track trail, density zone, counting line, overlay
-  realtime_logger.py         Ghi CSV log từng frame khi bật Log CSV
-  detection_export.py        Logic batch export annotated.mp4/detections.csv
-  model_registry.py          Khai báo 3 model VisDrone dùng chung cho frontend/export
-  config.py                  Đọc configs/project.yaml và resolve path
-  types.py                   Dataclass Detection dùng chung
+  realtime_app.py            Flask routes and API
+  realtime_template.py       Frontend HTML/CSS/JS template
+  realtime_stream.py         Video reading, YOLO inference/tracking, MJPEG stream
+  realtime_draw.py           Bounding boxes, tracks, density zones, counting line
+  realtime_logger.py         Per-frame CSV logging
+  detection_export.py        Batch annotated video and CSV export logic
+  model_registry.py          Shared model registry for all local workflows
 
 configs/
-  project.yaml               Class, model, inference và Kaggle defaults
-  models/yolov8n-p2.yaml     Kiến trúc YOLOv8n-P2 custom
+  project.yaml               Classes, models, inference defaults, Kaggle defaults
+  models/yolov8n-p2.yaml     Custom YOLOv8n-P2 architecture
 
 kaggle/
-  train.py                   Script train/tune trên Kaggle
-  check_model.py             Kiểm tra model config/pretrained transfer
-  requirements.txt           Dependencies tối thiểu cho Kaggle
+  train.py                   Kaggle fine-tuning script
+  check_model.py             Model/config sanity checks
 
 models/VisDrone/
-  yolov8n/                   Đặt best.pt/last.pt của YOLOv8n
-  yolov8n-p2/                Đặt best.pt/last.pt của YOLOv8n-P2
-  yolov8s/                   Đặt best.pt/last.pt của YOLOv8s
+  yolov8n/best.pt
+  yolov8n-p2/best.pt
+  yolov8s/best.pt
 
-experiments/                 Lưu số liệu W&B/benchmark tải về để phân tích báo cáo
-video/                       Video local để frontend/batch export đọc
-outputs/                     Kết quả sinh ra khi chạy app, không commit git
-docs/                        Hướng dẫn chi tiết theo từng workflow
-scripts/verify_setup.py      Kiểm tra nhanh layout local
+experiments/
+  summary/                   Small CSV files for public analysis
+  figures/                   Curated README/report figures
+  comparison_panels/          W&B PNG panels for report writing
+
+docs/                        Workflow and architecture documentation
+scripts/                     Setup verification and W&B export utilities
 ```
 
-Repo cho phép commit các file `models/VisDrone/*/best.pt` để người clone có thể chạy demo ngay. Các file video, output, dữ liệu tải về trong `experiments/`, và checkpoint phụ như `last.pt` vẫn bị `.gitignore`.
-
-## Cài Đặt Local
+## Installation
 
 ```powershell
 conda activate real_time_od
@@ -75,51 +136,35 @@ pip install -r requirements.txt
 python scripts/verify_setup.py
 ```
 
-`verify_setup.py` sẽ in ra class, model folder và trạng thái tồn tại của 3 checkpoint VisDrone.
+The verifier checks the project configuration, class list, model folders, and expected checkpoint paths.
 
-## Chạy Frontend Realtime
+## Run the Real-Time Application
 
 ```powershell
 conda activate real_time_od
 python app/realtime_front.py
 ```
 
-Mở browser:
+Open:
 
 ```text
 http://127.0.0.1:7860
 ```
 
-Luồng xử lý realtime:
+The application supports:
 
 ```text
-video frame gốc
-  -> YOLOv8n / YOLOv8n-P2 / YOLOv8s
-  -> vẽ bbox/class/confidence
-  -> tùy chọn Track / Density / Counting
-  -> resize stream nếu chọn Stream width 960/1280
-  -> nén JPEG theo JPEG quality
-  -> gửi MJPEG lên browser
+Object Detection      YOLOv8 bounding boxes, classes, confidences
+Tracking              ByteTrack IDs and motion trails
+Traffic Density       User-defined polygon zones
+Vehicle Counting      User-defined counting line
+CSV Logging           Per-frame detection logs under outputs/logs/
+Stream Controls       Stream width and JPEG quality controls
 ```
 
-Object Detection luôn bật. Các option còn lại chỉ chạy khi bật trong giao diện:
+## Batch Export
 
-```text
-Track                    ByteTrack, track ID, motion trail
-Traffic Density          Vẽ polygon 4 điểm cho từng vùng
-Vehicle Counting         Vẽ line 2 điểm để đếm xe đi qua
-Log CSV                  Ghi outputs/logs/<video>/<timestamp>/
-Stream width             960 / 1280 / Original cho frame gửi lên browser
-JPEG quality             65-90, mặc định 75
-```
-
-Nên demo bằng video 720p hoặc 1080p, 24-30 FPS, camera tĩnh hoặc gần tĩnh. Nếu stream giật, thử tắt `Log CSV`, chọn `Stream width = 960`, `JPEG quality = 70-75`.
-
-## Batch Export Object Detection
-
-Batch export chỉ chạy object detection, không chạy Track/Density/Counting. Dùng khi cần video minh họa và CSV cho báo cáo.
-
-Một video:
+Export one annotated video:
 
 ```powershell
 python app/detection.py `
@@ -130,7 +175,7 @@ python app/detection.py `
   --imgsz 640
 ```
 
-Toàn bộ thư mục `video/`:
+Export every video in `video/`:
 
 ```powershell
 python app/detection.py `
@@ -140,56 +185,42 @@ python app/detection.py `
   --device 0
 ```
 
-Mỗi video có output riêng:
+Each output folder contains:
 
 ```text
-outputs/detection/<ten-video>/
-  annotated.mp4
-  detections.csv
-  summary.json
-  sample.jpg
+annotated.mp4
+detections.csv
+summary.json
+sample.jpg
 ```
 
-## Kaggle Train Và Benchmark
+## Experiment Reproducibility
 
-Các workflow Kaggle nằm trong `kaggle/`, hướng dẫn chi tiết nằm trong `docs/`:
+Training and W&B export instructions are documented in:
 
 ```text
-docs/VISDRONE_RUN_GUIDE.md             Fine-tune YOLOv8n, YOLOv8n-P2, YOLOv8s
-docs/VISDRONE_TEST_BENCHMARK_GUIDE.md  Benchmark 3 model và export W&B/report data
-docs/KAGGLE_README.md                  Tóm tắt các file Kaggle
+docs/VISDRONE_RUN_GUIDE.md
+docs/VISDRONE_TEST_BENCHMARK_GUIDE.md
+docs/EXPERIMENTS_README.md
 ```
 
-Sau khi train xong trên Kaggle, tải checkpoint về đúng vị trí:
+Useful scripts:
+
+```powershell
+python scripts/download_wandb_experiments.py
+python scripts/generate_test_comparison_panels.py
+```
+
+The full raw W&B export is intentionally kept local and ignored by Git because it contains many generated media files. The public repository keeps only the compact artifacts needed to understand and reproduce the reported results:
 
 ```text
-models/VisDrone/yolov8n/best.pt
-models/VisDrone/yolov8n-p2/best.pt
-models/VisDrone/yolov8s/best.pt
+experiments/summary/*.csv
+experiments/figures/*.png
+experiments/comparison_panels/**/*.png
 ```
 
-Các file số liệu tải từ W&B/Kaggle để viết báo cáo nên để vào:
+## Notes and Limitations
 
-```text
-experiments/
-```
-
-Ví dụ:
-
-```text
-experiments/wandb_visdrone_export.zip
-experiments/visdrone_test_dev_report_export.zip
-experiments/visdrone_test_dev_comparison.csv
-```
-
-## Nên Đọc Docs Theo Thứ Tự
-
-```text
-docs/FRONTEND_ARCHITECTURE.md          Hiểu các file frontend/backend import nhau thế nào
-docs/FRONTEND_GUIDE.md                 Cách chạy và dùng giao diện realtime
-docs/LOCAL_DETECTION_EXPORT_GUIDE.md   Cách export annotated video/CSV
-docs/MODELS_README.md                  Cách đặt checkpoint model local
-docs/EXPERIMENTS_README.md             Cách lưu dữ liệu thực nghiệm tải từ W&B/Kaggle
-docs/VISDRONE_RUN_GUIDE.md             Cách fine-tune trên Kaggle
-docs/VISDRONE_TEST_BENCHMARK_GUIDE.md  Cách benchmark và tải số liệu từ W&B
-```
+- The reported speed values are W&B benchmark measurements per image, not full browser-stream latency.
+- The real-time app performance depends on GPU availability, input resolution, stream width, JPEG quality, and optional logging/tracking features.
+- VisDrone remains challenging for very small and heavily occluded objects; per-class AP should be inspected before deploying to a class-specific scenario.

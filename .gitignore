@@ -17,6 +17,10 @@ outputs/
 logs/
 experiments/*
 !experiments/.gitkeep
+!experiments/summary/
+!experiments/summary/**
+!experiments/figures/
+!experiments/figures/**
 
 # Videos
 video/
