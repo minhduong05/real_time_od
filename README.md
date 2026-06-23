@@ -1,10 +1,15 @@
 # Real-Time Object Detection With VisDrone YOLOv8
 
-Repo này phục vụ 3 việc chính:
+**Project 2:** Real-Time Object Detection With VisDrone YOLOv8  
+**Người thực hiện:** Trần Tuấn Minh - 20230051
 
-1. Fine-tune và benchmark 3 model YOLO trên VisDrone.
-2. Chạy demo realtime trên video local bằng Flask + OpenCV + Ultralytics.
-3. Export video/CSV object detection để đưa vào báo cáo.
+Repository này được xây dựng cho bài toán phát hiện đối tượng giao thông từ video, tập trung vào huấn luyện, đánh giá và triển khai thử nghiệm các mô hình YOLOv8 đã fine-tune trên bộ dữ liệu VisDrone.
+
+Các mục tiêu chính:
+
+1. Fine-tune và benchmark ba kiến trúc YOLOv8 trên bộ dữ liệu VisDrone.
+2. Xây dựng giao diện realtime để trực quan hóa kết quả phát hiện, tracking, ước lượng mật độ và đếm phương tiện trên video local.
+3. Xuất kết quả suy luận dạng annotated video, CSV và summary JSON nhằm phục vụ phân tích định lượng, đối chiếu thực nghiệm và tổng hợp kết quả.
 
 Project hiện chỉ tập trung vào 3 checkpoint VisDrone:
 
