@@ -138,9 +138,22 @@ INDEX_HTML = r"""
       <label>Confidence<input type="number" id="conf" min="0.05" max="0.95" step="0.05" value="0.35"></label>
       <label>Max box area<input type="number" id="maxArea" min="0.02" max="1" step="0.01" value="0.12"></label>
     </div>
+    <div class="row">
+      <label>Stream width
+        <select id="streamWidth">
+          <option value="1280" selected>1280</option>
+          <option value="960">960</option>
+          <option value="0">Original</option>
+        </select>
+      </label>
+      <label>JPEG quality<input type="number" id="jpegQuality" min="65" max="90" step="1" value="75"></label>
+    </div>
+    <label class="check"><input type="checkbox" id="optLogging"> Log CSV</label>
+    <div class="hint">Tắt log để test FPS sạch hơn; bật lại khi cần lưu kết quả từng frame.</div>
     <div class="toolbar">
       <button class="primary" id="start">Start</button>
-      <button class="danger" id="stop">Stop</button>
+      <button id="pauseToggle">Stop</button>
+      <button class="danger" id="finish">Finish</button>
     </div>
     <div id="status" class="status">Sẵn sàng.</div>
   </aside>
@@ -166,6 +179,7 @@ const ctx = canvas.getContext("2d");
 const optDensity = $("optDensity");
 const optCounting = $("optCounting");
 const optTrack = $("optTrack");
+const optLogging = $("optLogging");
 const densityPanel = $("densityPanel");
 const countPanel = $("countPanel");
 const statusBox = $("status");
@@ -177,8 +191,19 @@ let densityZones = [];
 let countLine = null;
 let currentZonePoints = [];
 let currentLinePoints = [];
+let isRunning = false;
+let isPaused = false;
 
 function setStatus(text) { statusBox.textContent = text; }
+
+async function sendPlaybackAction(action) {
+  const response = await fetch("/api/playback", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action }),
+  });
+  return response.json();
+}
 
 function updatePanels() {
   densityPanel.classList.toggle("hidden", !optDensity.checked);
@@ -188,6 +213,10 @@ function updatePanels() {
 async function loadVideos() {
   const videos = await (await fetch("/api/videos")).json();
   videoSelect.innerHTML = videos.map(v => `<option value="${v.path}">${v.name}</option>`).join("");
+  if (!videos.length) {
+    videoSelect.innerHTML = "";
+    setStatus("Chưa có video trong thư mục video/. Hãy thêm file .mp4/.avi/.mov/.mkv/.webm rồi refresh trang.");
+  }
 }
 
 async function loadModels() {
@@ -204,6 +233,10 @@ function updateModelHint() {
 }
 
 async function loadFrame() {
+  if (!videoSelect.value) {
+    setStatus("Chưa có video để load frame.");
+    return;
+  }
   const video = videoSelect.value;
   videoInfo = await (await fetch(`/api/video-info?video=${encodeURIComponent(video)}`)).json();
   snapshot.src = `/api/frame?video=${encodeURIComponent(video)}&t=${Date.now()}`;
@@ -340,7 +373,9 @@ $("okLine").onclick = () => {
 $("clearLine").onclick = () => { countLine = null; currentLinePoints = []; drawMode = null; redrawCanvas(); };
 
 $("start").onclick = async () => {
+  if (!videoSelect.value) return setStatus("Chưa có video để xử lý.");
   if (!videoInfo) await loadFrame();
+  if (!videoInfo) return;
   if (optDensity.checked && densityZones.length !== Number($("zoneCount").value)) return setStatus("Cần vẽ đủ density zones rồi mới Start.");
   if (optCounting.checked && !countLine) return setStatus("Cần vẽ counting line rồi mới Start.");
   await fetch("/api/config", {
@@ -354,21 +389,46 @@ $("start").onclick = async () => {
       count_line: countLine,
       conf: Number($("conf").value),
       max_box_area_ratio: Number($("maxArea").value),
+      enable_logging: optLogging.checked,
+      stream_width: Number($("streamWidth").value),
+      jpeg_quality: Number($("jpegQuality").value),
     }),
   });
   canvas.classList.add("hidden");
   snapshot.classList.add("hidden");
   stream.classList.remove("hidden");
   stream.src = `/video_feed?t=${Date.now()}`;
+  isRunning = true;
+  isPaused = false;
+  $("pauseToggle").textContent = "Stop";
   setStatus("Đang xử lý realtime stream...");
 };
 
-$("stop").onclick = () => {
+$("pauseToggle").onclick = async () => {
+  if (!isRunning) return;
+  if (isPaused) {
+    await sendPlaybackAction("resume");
+    isPaused = false;
+    $("pauseToggle").textContent = "Stop";
+    setStatus("Tiếp tục xử lý realtime stream...");
+  } else {
+    await sendPlaybackAction("pause");
+    isPaused = true;
+    $("pauseToggle").textContent = "Continue";
+    setStatus("Đã dừng tạm thời. Frame hiện tại được giữ nguyên để quan sát.");
+  }
+};
+
+$("finish").onclick = async () => {
+  if (isRunning) await sendPlaybackAction("finish");
   stream.src = "";
   stream.classList.add("hidden");
   snapshot.classList.remove("hidden");
   canvas.classList.remove("hidden");
-  setStatus("Đã dừng stream.");
+  isRunning = false;
+  isPaused = false;
+  $("pauseToggle").textContent = "Stop";
+  setStatus("Đã kết thúc stream và quay về frame đầu.");
 };
 
 window.addEventListener("resize", resizeCanvas);

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter, deque
+from typing import Any
 
 import cv2
 import numpy as np
@@ -36,7 +37,7 @@ def draw_detection(
 def draw_density_zones(
     frame: np.ndarray,
     detections: list[Detection],
-    zones: list[dict[str, int]],
+    zones: list[dict[str, Any]],
 ) -> None:
     for index, zone in enumerate(zones, start=1):
         points = [(int(point["x"]), int(point["y"])) for point in zone.get("points", [])]
@@ -127,10 +128,17 @@ def draw_active_overlay(
     frame_index: int,
     options: dict[str, bool],
     model_label: str,
+    current_fps: float,
+    source_fps: float,
 ) -> None:
     enabled = ["Detection"]
     enabled.extend(name for name, is_on in options.items() if is_on)
-    lines = [f"Model: {model_label}", f"Frame {frame_index}", "On: " + ", ".join(enabled)]
+    lines = [
+        f"Model: {model_label}",
+        f"Frame {frame_index}",
+        f"FPS: {current_fps:.1f} / {source_fps:.1f}",
+        "On: " + ", ".join(enabled),
+    ]
     lines.extend(f"{name}: {count}" for name, count in sorted(counts.items()))
 
     font = cv2.FONT_HERSHEY_SIMPLEX

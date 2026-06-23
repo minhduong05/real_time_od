@@ -15,8 +15,18 @@ from realtime_od.config import read_config, resolve_project_path
 from realtime_od.model_registry import MODEL_REGISTRY
 
 
+VIDEO_EXTENSIONS = {".mp4", ".avi", ".mov", ".mkv", ".webm"}
+
+
 def main() -> None:
     config = read_config()
+    video_dir = resolve_project_path("video")
+    videos = []
+    if video_dir.exists():
+        videos = sorted(
+            path for path in video_dir.iterdir()
+            if path.is_file() and path.suffix.lower() in VIDEO_EXTENSIONS
+        )
 
     print(f"Project: {config['project']['name']}")
     print(f"Classes: {len(config['classes'])}")
@@ -31,6 +41,16 @@ def main() -> None:
     for model in MODEL_REGISTRY.values():
         weights = resolve_project_path(model.weights)
         print(f"  {model.label}: {weights} ({'ok' if weights.exists() else 'missing'})")
+
+    print(f"Local videos: {len(videos)} in {video_dir}")
+    for video in videos[:5]:
+        print(f"  {video.name}")
+    if len(videos) > 5:
+        print(f"  ... {len(videos) - 5} more")
+
+    print("Generated outputs:")
+    print("  outputs/detection/  batch annotated videos and CSV files")
+    print("  outputs/logs/       optional realtime CSV logs")
 
     print("Run realtime frontend:")
     print("  python app/realtime_front.py")

@@ -75,6 +75,21 @@ def create_app(state: RealtimeState | None = None) -> Flask:
         app_state.set_config(payload)
         return jsonify({"ok": True})
 
+    @app.post("/api/playback")
+    def set_playback() -> Response:
+        payload = request.get_json(force=True)
+        try:
+            playback = app_state.set_playback_action(str(payload.get("action", "")))
+        except ValueError as error:
+            return jsonify({"ok": False, "error": str(error)}), 400
+        return jsonify(
+            {
+                "ok": True,
+                "paused": playback.paused,
+                "finish_requested": playback.finish_requested,
+            }
+        )
+
     @app.get("/video_feed")
     def video_feed() -> Response:
         return Response(process_stream(app_state), mimetype="multipart/x-mixed-replace; boundary=frame")

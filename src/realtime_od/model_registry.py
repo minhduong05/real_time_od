@@ -29,7 +29,7 @@ MODEL_REGISTRY: dict[str, ModelSpec] = {
         key="yolov8n-p2",
         label="YOLOv8n-P2",
         weights="models/VisDrone/yolov8n-p2/best.pt",
-        description="P2 head cho object nhỏ trong ảnh UAV.",
+        description="P2 head cho object nhỏ trong ảnh.",
     ),
     "yolov8s": ModelSpec(
         key="yolov8s",
