@@ -14,7 +14,7 @@ python app/detection.py `
   --source video/video2.mp4 `
   --model yolov8n-p2 `
   --device 0 `
-  --conf 0.35 `
+  --conf 0.2 `
   --iou 0.7 `
   --imgsz 640 `
   --max-box-area-ratio 0.12
@@ -36,7 +36,7 @@ python app/detection.py `
   --output-root outputs/detection `
   --model yolov8n-p2 `
   --device 0 `
-  --conf 0.35 `
+  --conf 0.2 `
   --iou 0.7 `
   --imgsz 640 `
   --max-box-area-ratio 0.12

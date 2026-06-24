@@ -71,8 +71,9 @@ def process_stream(state: RealtimeState) -> Iterable[bytes]:
     run_logger = RealtimeRunLogger.create(video_path, config, model_spec, mode) if config.enable_logging else None
     trails: dict[int, deque[tuple[int, int]]] = defaultdict(lambda: deque(maxlen=30))
     previous_centers: dict[int, tuple[int, int]] = {}
-    counted_ids: set[int] = set()
-    count_by_class: Counter[str] = Counter()
+    previous_sides_by_line: dict[int, dict[int, int]] = {}
+    counted_ids_by_line: dict[int, set[int]] = {}
+    count_by_line_class: dict[int, Counter[str]] = {}
     frame_index = 0
     frame_durations: deque[float] = deque(maxlen=30)
     previous_frame_start: float | None = None
@@ -125,20 +126,20 @@ def process_stream(state: RealtimeState) -> Iterable[bytes]:
             if config.options.get("density"):
                 draw_density_zones(annotated, detections, config.density_zones)
 
-            if config.options.get("counting") and config.count_line:
-                update_and_draw_counting(
-                    annotated,
-                    detections,
-                    config.count_line,
-                    previous_centers,
-                    counted_ids,
-                    count_by_class,
-                )
-
             for detection in detections:
                 draw_detection(annotated, detection, trails, show_track=config.options.get("track", False))
 
             draw_active_overlay(annotated, active_counts, frame_index, config.options, model_spec.label, current_fps, fps)
+            if config.options.get("counting") and config.count_lines:
+                update_and_draw_counting(
+                    annotated,
+                    detections,
+                    config.count_lines,
+                    previous_centers,
+                    previous_sides_by_line,
+                    counted_ids_by_line,
+                    count_by_line_class,
+                )
             stream_frame = prepare_stream_frame(annotated, config.stream_width)
             ok, buffer = cv2.imencode(
                 ".jpg",

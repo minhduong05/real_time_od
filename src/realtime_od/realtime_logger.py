@@ -74,7 +74,7 @@ class RealtimeRunLogger:
                     "mode": mode,
                     "options": config.options,
                     "density_zones": config.density_zones,
-                    "count_line": config.count_line,
+                    "count_lines": config.count_lines,
                     "conf": config.conf,
                     "max_box_area_ratio": config.max_box_area_ratio,
                     "stream_width": config.stream_width,

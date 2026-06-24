@@ -18,7 +18,7 @@ class RuntimeConfig:
     model_key: str = DEFAULT_MODEL_KEY
     options: dict[str, bool] = field(default_factory=dict)
     density_zones: list[dict[str, Any]] = field(default_factory=list)
-    count_line: dict[str, dict[str, int]] | None = None
+    count_lines: list[dict[str, dict[str, int]]] = field(default_factory=list)
     conf: float = 0.35
     max_box_area_ratio: float = 0.12
     enable_logging: bool = False
@@ -49,13 +49,18 @@ class RealtimeState:
         return self.models[model_spec.key]
 
     def set_config(self, payload: dict[str, Any]) -> None:
+        count_lines = payload.get("count_lines")
+        if count_lines is None:
+            count_line = payload.get("count_line")
+            count_lines = [count_line] if count_line else []
+
         with self.lock:
             self.config = RuntimeConfig(
                 video=str(payload.get("video", "")),
                 model_key=str(payload.get("model_key", DEFAULT_MODEL_KEY)),
                 options=dict(payload.get("options", {})),
                 density_zones=list(payload.get("density_zones", [])),
-                count_line=payload.get("count_line"),
+                count_lines=list(count_lines),
                 conf=float(payload.get("conf", 0.35)),
                 max_box_area_ratio=float(payload.get("max_box_area_ratio", 0.12)),
                 enable_logging=bool(payload.get("enable_logging", False)),
@@ -71,7 +76,7 @@ class RealtimeState:
                 model_key=self.config.model_key,
                 options=dict(self.config.options),
                 density_zones=list(self.config.density_zones),
-                count_line=self.config.count_line,
+                count_lines=list(self.config.count_lines),
                 conf=self.config.conf,
                 max_box_area_ratio=self.config.max_box_area_ratio,
                 enable_logging=self.config.enable_logging,

@@ -70,36 +70,68 @@ def point_in_polygon(point: tuple[int, int], polygon: list[tuple[int, int]]) -> 
 def update_and_draw_counting(
     frame: np.ndarray,
     detections: list[Detection],
-    line: dict[str, dict[str, int]],
+    lines: list[dict[str, dict[str, int]]],
     previous_centers: dict[int, tuple[int, int]],
-    counted_ids: set[int],
-    count_by_class: Counter[str],
+    previous_sides_by_line: dict[int, dict[int, int]],
+    counted_ids_by_line: dict[int, set[int]],
+    count_by_line_class: dict[int, Counter[str]],
 ) -> None:
-    p1 = (int(line["p1"]["x"]), int(line["p1"]["y"]))
-    p2 = (int(line["p2"]["x"]), int(line["p2"]["y"]))
-    cv2.line(frame, p1, p2, (0, 0, 0), 7, lineType=cv2.LINE_AA)
-    cv2.line(frame, p1, p2, (0, 220, 255), 4, lineType=cv2.LINE_AA)
-    cv2.circle(frame, p1, 7, (0, 0, 0), -1, lineType=cv2.LINE_AA)
-    cv2.circle(frame, p2, 7, (0, 0, 0), -1, lineType=cv2.LINE_AA)
-    cv2.circle(frame, p1, 5, (0, 220, 255), -1, lineType=cv2.LINE_AA)
-    cv2.circle(frame, p2, 5, (0, 220, 255), -1, lineType=cv2.LINE_AA)
+    parsed_lines = []
+    for index, line in enumerate(lines):
+        try:
+            p1 = (int(line["p1"]["x"]), int(line["p1"]["y"]))
+            p2 = (int(line["p2"]["x"]), int(line["p2"]["y"]))
+        except (KeyError, TypeError, ValueError):
+            continue
+        color = color_for_id(index + 2)
+        previous_sides_by_line.setdefault(index, {})
+        counted_ids_by_line.setdefault(index, set())
+        count_by_line_class.setdefault(index, Counter())
+        parsed_lines.append((index, p1, p2, color))
+        cv2.line(frame, p1, p2, (0, 0, 0), 7, lineType=cv2.LINE_AA)
+        cv2.line(frame, p1, p2, color, 4, lineType=cv2.LINE_AA)
+        cv2.circle(frame, p1, 7, (0, 0, 0), -1, lineType=cv2.LINE_AA)
+        cv2.circle(frame, p2, 7, (0, 0, 0), -1, lineType=cv2.LINE_AA)
+        cv2.circle(frame, p1, 5, color, -1, lineType=cv2.LINE_AA)
+        cv2.circle(frame, p2, 5, color, -1, lineType=cv2.LINE_AA)
 
-    for detection in detections:
+    tracked_detections = [
+        detection for detection in detections
+        if detection.track_id >= 0 and detection.class_name in VEHICLE_CLASSES
+    ]
+    for detection in tracked_detections:
         if detection.track_id < 0:
             continue
         current = detection.center
         previous = previous_centers.get(detection.track_id)
-        if previous and detection.track_id not in counted_ids and crossed_line(previous, current, p1, p2):
-            counted_ids.add(detection.track_id)
-            count_by_class[detection.class_name] += 1
-        previous_centers[detection.track_id] = current
+        for index, p1, p2, _color in parsed_lines:
+            current_side = side_of_line(current, p1, p2)
+            if current_side == 0:
+                continue
 
-    total = sum(count_by_class.values())
-    draw_label(frame, f"Count: {total}", (p1[0] + 8, p1[1] - 12), (0, 220, 255))
-    y = 92
-    for class_name, count in sorted(count_by_class.items()):
-        draw_label(frame, f"{class_name}: {count}", (12, y), (0, 220, 255))
-        y += 24
+            previous_sides = previous_sides_by_line[index]
+            previous_side = previous_sides.get(detection.track_id)
+            if previous_side is None:
+                previous_sides[detection.track_id] = current_side
+                continue
+
+            counted_ids = counted_ids_by_line[index]
+            if (
+                previous
+                and previous_side != current_side
+                and detection.track_id not in counted_ids
+                and segments_intersect(previous, current, p1, p2)
+            ):
+                counted_ids.add(detection.track_id)
+                count_by_line_class[index][detection.class_name] += 1
+            previous_sides[detection.track_id] = current_side
+
+    for detection in tracked_detections:
+        previous_centers[detection.track_id] = detection.center
+
+    for index, p1, _p2, color in parsed_lines:
+        total = sum(count_by_line_class[index].values())
+        draw_label(frame, f"Line {index + 1} count: {total}", (p1[0] + 8, p1[1] - 12), color)
 
 
 def crossed_line(
@@ -108,9 +140,41 @@ def crossed_line(
     line_a: tuple[int, int],
     line_b: tuple[int, int],
 ) -> bool:
+    if previous == current or line_a == line_b:
+        return False
     prev_side = side_of_line(previous, line_a, line_b)
     curr_side = side_of_line(current, line_a, line_b)
-    return prev_side != 0 and curr_side != 0 and prev_side != curr_side
+    return prev_side != curr_side and segments_intersect(previous, current, line_a, line_b)
+
+
+def segments_intersect(
+    a: tuple[int, int],
+    b: tuple[int, int],
+    c: tuple[int, int],
+    d: tuple[int, int],
+) -> bool:
+    side_c = side_of_line(c, a, b)
+    side_d = side_of_line(d, a, b)
+    side_a = side_of_line(a, c, d)
+    side_b = side_of_line(b, c, d)
+
+    if side_c == 0 and point_on_segment(c, a, b):
+        return True
+    if side_d == 0 and point_on_segment(d, a, b):
+        return True
+    if side_a == 0 and point_on_segment(a, c, d):
+        return True
+    if side_b == 0 and point_on_segment(b, c, d):
+        return True
+    return side_c != side_d and side_a != side_b
+
+
+def point_on_segment(point: tuple[int, int], a: tuple[int, int], b: tuple[int, int]) -> bool:
+    return (
+        min(a[0], b[0]) <= point[0] <= max(a[0], b[0])
+        and min(a[1], b[1]) <= point[1] <= max(a[1], b[1])
+        and side_of_line(point, a, b) == 0
+    )
 
 
 def side_of_line(point: tuple[int, int], a: tuple[int, int], b: tuple[int, int]) -> int:
@@ -139,7 +203,7 @@ def draw_active_overlay(
         f"FPS: {current_fps:.1f} / {source_fps:.1f}",
         "On: " + ", ".join(enabled),
     ]
-    lines.extend(f"{name}: {count}" for name, count in sorted(counts.items()))
+    lines.extend(f"Visible {name}: {count}" for name, count in sorted(counts.items()))
 
     font = cv2.FONT_HERSHEY_SIMPLEX
     scale = 0.55

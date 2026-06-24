@@ -99,7 +99,7 @@ Quản lý state dùng chung giữa các request:
 ```text
 RuntimeConfig
   video, model_key, options
-  density_zones, count_line
+  density_zones, count_lines
   conf, max_box_area_ratio
   enable_logging
   stream_width, jpeg_quality
@@ -196,4 +196,3 @@ sample.jpg
 ```
 
 Tracking, density và counting chỉ nằm trong frontend realtime.
-

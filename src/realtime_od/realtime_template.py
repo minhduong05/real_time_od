@@ -112,7 +112,7 @@ INDEX_HTML = r"""
 
     <div id="densityPanel" class="hidden">
       <h2>Density zones</h2>
-      <label>Số vùng<input type="number" id="zoneCount" min="1" max="8" value="2"></label>
+      <label>Số vùng<input type="number" id="zoneCount" min="1" max="99" value="2"></label>
       <div class="toolbar">
         <button id="drawZones">Vẽ vùng</button>
         <button id="okZone">OK vùng</button>
@@ -124,12 +124,13 @@ INDEX_HTML = r"""
 
     <div id="countPanel" class="hidden">
       <h2>Counting line</h2>
+      <label>Số thanh<input type="number" id="lineCount" min="1" max="99" value="1"></label>
       <div class="toolbar">
         <button id="drawLine">Vẽ thanh đếm</button>
         <button id="okLine">OK thanh</button>
         <button id="clearLine">Xóa thanh</button>
       </div>
-      <div class="hint">Thanh đếm cần đúng 2 điểm trên frame, rồi bấm OK thanh.</div>
+      <div class="hint">Mỗi thanh đếm cần đúng 2 điểm trên frame, rồi bấm OK thanh.</div>
       <div id="lineBadge"></div>
     </div>
 
@@ -188,13 +189,21 @@ let videoInfo = null;
 let modelSpecs = [];
 let drawMode = null;
 let densityZones = [];
-let countLine = null;
+let countLines = [];
 let currentZonePoints = [];
 let currentLinePoints = [];
 let isRunning = false;
 let isPaused = false;
 
 function setStatus(text) { statusBox.textContent = text; }
+
+function getPositiveInt(id) {
+  const input = $(id);
+  const value = Math.floor(Number(input.value));
+  const normalized = Number.isFinite(value) && value >= 1 ? value : 1;
+  input.value = normalized;
+  return normalized;
+}
 
 async function sendPlaybackAction(action) {
   const response = await fetch("/api/playback", {
@@ -244,7 +253,7 @@ async function loadFrame() {
   stream.classList.add("hidden");
   canvas.classList.remove("hidden");
   densityZones = [];
-  countLine = null;
+  countLines = [];
   currentZonePoints = [];
   currentLinePoints = [];
   drawMode = null;
@@ -317,7 +326,7 @@ function drawLine(line, color, label) {
 function redrawCanvas() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   densityZones.forEach((zone, index) => drawPolygon(zone, "#35c28f", `Zone ${index + 1}`));
-  if (countLine) drawLine(countLine, "#ffcc33", "Counting line");
+  countLines.forEach((line, index) => drawLine(line, "#ffcc33", `Line ${index + 1}`));
   if (currentZonePoints.length) drawPolygon({ points: currentZonePoints }, "#8bd9ff", `Draft ${currentZonePoints.length}/4`);
   if (currentLinePoints.length === 1) {
     const p = scaleFromVideo(currentLinePoints[0]);
@@ -328,7 +337,7 @@ function redrawCanvas() {
   }
   if (currentLinePoints.length === 2) drawLine({ p1: currentLinePoints[0], p2: currentLinePoints[1] }, "#8bd9ff", "Draft line");
   $("zoneBadges").innerHTML = densityZones.map((z, i) => `<span class="badge">Z${i + 1}: ${z.points.map(p => `(${p.x},${p.y})`).join(" ")}</span>`).join("");
-  $("lineBadge").innerHTML = countLine ? `<span class="badge">(${countLine.p1.x},${countLine.p1.y}) -> (${countLine.p2.x},${countLine.p2.y})</span>` : "";
+  $("lineBadge").innerHTML = countLines.map((line, i) => `<span class="badge">L${i + 1}: (${line.p1.x},${line.p1.y}) -> (${line.p2.x},${line.p2.y})</span>`).join("");
 }
 
 canvas.addEventListener("click", event => {
@@ -351,7 +360,7 @@ optDensity.onchange = updatePanels;
 optCounting.onchange = updatePanels;
 $("drawZones").onclick = () => { densityZones = []; currentZonePoints = []; drawMode = "zones"; setStatus("Bấm 4 điểm cho từng density zone."); redrawCanvas(); };
 $("okZone").onclick = () => {
-  const maxZones = Number($("zoneCount").value || 1);
+  const maxZones = getPositiveInt("zoneCount");
   if (currentZonePoints.length !== 4) return setStatus("Một vùng density cần đúng 4 điểm trước khi OK.");
   if (densityZones.length >= maxZones) return setStatus("Đã đủ số vùng đã chọn.");
   densityZones.push({ points: currentZonePoints });
@@ -361,23 +370,27 @@ $("okZone").onclick = () => {
   redrawCanvas();
 };
 $("clearZones").onclick = () => { densityZones = []; currentZonePoints = []; drawMode = null; redrawCanvas(); };
-$("drawLine").onclick = () => { countLine = null; currentLinePoints = []; drawMode = "line"; setStatus("Bấm 2 điểm cho counting line."); redrawCanvas(); };
+$("drawLine").onclick = () => { countLines = []; currentLinePoints = []; drawMode = "line"; setStatus("Bấm 2 điểm cho từng counting line."); redrawCanvas(); };
 $("okLine").onclick = () => {
+  const maxLines = getPositiveInt("lineCount");
   if (currentLinePoints.length !== 2) return setStatus("Counting line cần đúng 2 điểm trước khi OK.");
-  countLine = { p1: currentLinePoints[0], p2: currentLinePoints[1] };
+  if (countLines.length >= maxLines) return setStatus("Đã đủ số thanh đã chọn.");
+  countLines.push({ p1: currentLinePoints[0], p2: currentLinePoints[1] });
   currentLinePoints = [];
-  drawMode = null;
-  setStatus("Đã lưu counting line.");
+  drawMode = countLines.length < maxLines ? "line" : null;
+  setStatus(drawMode ? `Đã lưu thanh ${countLines.length}. Tiếp tục vẽ thanh kế tiếp.` : "Đã lưu đủ counting line.");
   redrawCanvas();
 };
-$("clearLine").onclick = () => { countLine = null; currentLinePoints = []; drawMode = null; redrawCanvas(); };
+$("clearLine").onclick = () => { countLines = []; currentLinePoints = []; drawMode = null; redrawCanvas(); };
 
 $("start").onclick = async () => {
   if (!videoSelect.value) return setStatus("Chưa có video để xử lý.");
   if (!videoInfo) await loadFrame();
   if (!videoInfo) return;
-  if (optDensity.checked && densityZones.length !== Number($("zoneCount").value)) return setStatus("Cần vẽ đủ density zones rồi mới Start.");
-  if (optCounting.checked && !countLine) return setStatus("Cần vẽ counting line rồi mới Start.");
+  if (optDensity.checked && currentZonePoints.length) return setStatus("Vùng density đang vẽ dở. Hãy bấm OK vùng hoặc Xóa vùng trước khi Start.");
+  if (optDensity.checked && densityZones.length !== getPositiveInt("zoneCount")) return setStatus("Cần vẽ đủ density zones rồi mới Start.");
+  if (optCounting.checked && currentLinePoints.length) return setStatus("Counting line đang vẽ dở. Hãy bấm OK thanh hoặc Xóa thanh trước khi Start.");
+  if (optCounting.checked && countLines.length !== getPositiveInt("lineCount")) return setStatus("Cần vẽ đủ counting lines rồi mới Start.");
   await fetch("/api/config", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -386,7 +399,7 @@ $("start").onclick = async () => {
       model_key: modelSelect.value,
       options: { density: optDensity.checked, counting: optCounting.checked, track: optTrack.checked },
       density_zones: densityZones,
-      count_line: countLine,
+      count_lines: countLines,
       conf: Number($("conf").value),
       max_box_area_ratio: Number($("maxArea").value),
       enable_logging: optLogging.checked,
